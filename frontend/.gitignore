@@ -1,0 +1,16 @@
+# frontend
+frontend/node_modules
+frontend/dist
+frontend/.env
+
+# backend
+backend/target
+backend/.env
+
+# system
+.DS_Store
+.idea
+.vscode
+
+# logs
+*.log

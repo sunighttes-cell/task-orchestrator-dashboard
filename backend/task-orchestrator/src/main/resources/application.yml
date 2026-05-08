@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: task-orchestrator
+
+server:
+  port: 8080
+
+  #Later to add:
+      ## DB credentials
+      ## profiles
+      ## logging config

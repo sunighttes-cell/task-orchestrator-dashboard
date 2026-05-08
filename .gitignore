@@ -1,0 +1,41 @@
+# Frontend (Node.js / npm)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Backend (Maven / Java)
+backend/*/target/
+backend/*/.classpath
+backend/*/.project
+backend/*/.settings/
+backend/*/.vscode/
+backend/*/.idea/
+backend/*/*.iml
+backend/*/mvnw
+backend/*/mvnw.cmd
+backend/*/.mvn/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
