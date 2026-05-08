@@ -2,10 +2,20 @@ spring:
   application:
     name: task-orchestrator
 
+  #Later to add: DB credentials, profiles, logging config
+  datasource:
+    url: jdbc:h2:mem:taskdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    show-sql: true
+
 server:
   port: 8080
-
-  #Later to add:
-      ## DB credentials
-      ## profiles
-      ## logging config

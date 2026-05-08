@@ -1,4 +1,4 @@
-package com.fedstack.task_orchestrator;
+package com.fedstack.demo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
