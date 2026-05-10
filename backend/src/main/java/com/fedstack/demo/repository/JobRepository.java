@@ -18,6 +18,9 @@ public interface JobRepository extends JpaRepository<Job, Long>, JpaSpecificatio
     @Query("SELECT new com.fedstack.demo.dto.StatusSummary(j.status, COUNT(j)) FROM Job j GROUP BY j.status")
     List<StatusSummary> getStatusSummary();
 
+    //realistic simulation: worker throughput, queue limits, batch consumption
+    List<Job> findTop5ByStatusOrderByCreatedAtAsc(JobStatus status);
+
     //Equivalent SQL: SELECT COUNT(*) FROM jobs WHERE status = ?
     //summary cards //metrics //monitoring
     long countByStatus(JobStatus status);

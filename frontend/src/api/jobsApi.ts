@@ -1,6 +1,6 @@
 //Centralize API calls.
 
-import type { Job, CreateJobRequest, StatusSummaryResponse } from "@/types/job";
+import type { Job, CreateJobRequest, JobsPageResponse, StatusSummaryResponse } from "@/types/job";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -25,7 +25,8 @@ export async function getJobs(): Promise<Job[]> {
   if (!response.ok) {
     throw new Error("Failed to fetch jobs");
   }
-  return response.json();
+  const data = (await response.json()) as JobsPageResponse | Job[];
+  return Array.isArray(data) ? data : data.content;
 }
 
 //retryJob()

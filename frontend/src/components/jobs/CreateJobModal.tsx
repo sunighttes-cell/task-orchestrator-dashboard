@@ -12,7 +12,7 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ onClose }) => {
 
   const createJobMutation = useCreateJob();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     createJobMutation.mutate(
       { name, description },

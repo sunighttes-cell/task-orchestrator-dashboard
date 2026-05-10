@@ -3,9 +3,10 @@
 import CreateJobForm from "@/components/jobs/CreateJobForm";
 import DisplayJobList from "@/components/jobs/DisplayJobList";
 import { useJobs } from "@/hooks/useJobs";
+import SummaryGrid from "@/components/jobs/SummaryGrid";
 
 export function Dashboard() {
-  const { data: jobList, error, isLoading } = useJobs();
+  const { data: jobList, error, isLoading, refetch } = useJobs();
 
   return (
     <div>
@@ -16,7 +17,8 @@ export function Dashboard() {
         Welcome to the Task Orchestrator Dashboard! Here you can manage your tasks and monitor their status.
       </p>  
       <CreateJobForm />
-      <DisplayJobList jobs={jobList} error={error} isLoading={isLoading} onRetry={() => {}} />
+      <DisplayJobList jobs={jobList} error={error} isLoading={isLoading} onRetry={() => refetch()} />
+      <SummaryGrid jobs={jobList} />
     </div>
   );
 }

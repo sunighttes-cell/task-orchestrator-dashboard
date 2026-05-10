@@ -1,33 +1,31 @@
 //Job List Component
-import JobCard from  "@/components/jobs/DisplayJobCard";
+import JobCard from "@/components/jobs/DisplayJobCard";
 import type { Job } from "@/types/job";
 
-  interface Props {
-    jobs: Job[] | undefined;
-    isLoading: boolean;
-    error: Error | null;
-    onRetry: (jobId: number) => void;
-  }
+interface Props {
+  jobs: Job[] | undefined;
+  isLoading: boolean;
+  error: Error | null;
+  onRetry: (jobId: number) => void;
+}
 
-const DisplayJobList: React.FC<Props> = ({ jobs, isLoading, error,        onRetry }) => {
-  if (jobs === undefined || jobs === null) return <div>No jobs found</div>;
+const DisplayJobList: React.FC<Props> = ({ jobs, isLoading, error, onRetry }) => {
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading jobs: {error.message}</div>;
+  if (!jobs || jobs.length === 0) return <div>No jobs found</div>;
 
   return (
     <div>
       <h2>Job List</h2>
       <ul>
-        {jobs?.map((job) => (
+        {jobs.map((job) => (
           <li key={job.id}>
-            <h3>{job.name}</h3>
-            <p>{job.description}</p>
             <JobCard job={job} onRetry={onRetry} />
           </li>
         ))}
       </ul>
     </div>
   );
-}
+};
 
 export default DisplayJobList;

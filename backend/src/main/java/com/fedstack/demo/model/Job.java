@@ -54,7 +54,9 @@ private LocalDateTime updatedAt;
 
 //not automated controlled by processor service
 private LocalDateTime startedAt;
+private LocalDateTime queuedAt;
 private LocalDateTime completedAt;
+private String failureReason;
 
 //default status set inside service layer bc business logic belongs in service
 }

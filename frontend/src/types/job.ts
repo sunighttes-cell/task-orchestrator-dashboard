@@ -27,6 +27,14 @@ export interface CreateJobRequest {
   description?: string;
 }
 
+export interface JobsPageResponse {
+  content: Job[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 /*export interface UpdateJobRequest {
   name?: string;
   description?: string;

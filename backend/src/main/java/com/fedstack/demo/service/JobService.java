@@ -27,9 +27,9 @@ public class JobService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .status(JobStatus.QUEUED)
+                .queuedAt(LocalDateTime.now())
                 .retryCount(0)
                 .build();
-
         Job savedJob = jobRepository.save(job);
         return JobResponse.fromJob(savedJob);
     }
@@ -62,6 +62,9 @@ public class JobService {
 
     public JobResponse retryJob(Long jobId) {
         Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+        if (job.getStatus() != JobStatus.FAILED) {
+            throw new IllegalStateException("Job must be in FAILED status to retry");
+        }
         job.setStatus(JobStatus.QUEUED);
         job.setRetryCount(job.getRetryCount() + 1);
         job.setStartedAt(null);
