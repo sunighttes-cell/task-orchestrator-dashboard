@@ -1,8 +1,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import type { ReactNode } from "react";
 
-// Architecture decision - creating a reusable dashboard shell component for consistent layout and styling across all pages. 
-//Create Global Layout Shell
+// reusable Global Layout dashboard shell for consistent layout & styling
 
 interface Props {
   children: ReactNode;

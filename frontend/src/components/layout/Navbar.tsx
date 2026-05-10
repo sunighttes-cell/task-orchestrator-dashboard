@@ -1,5 +1,5 @@
-// Architecture decision - creating a reusable dashboard shell component for consistent layout and styling across all pages.
-//Create Global Layout Shell
+// reusable Global Layout dashboard shell for consistent layout & styling
+
 export function Navbar() {
   return (
     <nav className="border-b p-4">

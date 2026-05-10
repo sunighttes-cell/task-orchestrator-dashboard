@@ -1,6 +1,9 @@
+package com.fedstack.demo.repository.specification;
 import com.fedstack.demo.model.Job;
 import com.fedstack.demo.model.JobStatus;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.time.LocalDateTime;
 
 public class JobSpecification {
     // root = job table, root.get("status") = job.status, criteriaBuilder.equal(...) = WHERE status = ?
@@ -25,6 +28,20 @@ public class JobSpecification {
                             likePattern
                     )
             );
+        };
+    }
+
+    public static Specification<Job> hasRetryCount(Integer retryCount) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("retryCount"), retryCount);
+    }
+    public static Specification<Job> createdAfter(LocalDateTime createdAt) {
+        return (root, query, criteriaBuilder) -> {
+            if (createdAt == null) {
+                return null; // Ignore filter if timestamp is null
+            }
+            // Use criteriaBuilder greaterThan for "after" or criteriaBuilder greaterThanOrEqualTo for "after or at"
+            return criteriaBuilder.greaterThan(root.get("createdAt"), createdAt);
         };
     }
 }

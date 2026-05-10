@@ -4,8 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import "./index.css";
 
-// Architecture decision - using React Query for data fetching and caching
-//caching, polling, retries, invalidation, async state management
+//React Query for data fetching and caching
 
 const queryClient = new QueryClient();
 
