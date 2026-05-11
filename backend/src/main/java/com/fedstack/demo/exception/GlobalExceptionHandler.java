@@ -36,4 +36,22 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
+
+    @ExceptionHandler(JobNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleNotFound(JobNotFoundException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("code", "JOB_NOT_FOUND");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("code", "INVALID_JOB_STATE");
+        response.put("message", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
 }

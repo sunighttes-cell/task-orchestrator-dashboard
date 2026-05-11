@@ -1,16 +1,15 @@
 
-//Zustand store for dashboard filters, search state and future sorting/pagination state. Used in JobList and SearchBar 
+//Zustand store for dashboard filters, search state and future sorting/pagination. Used in JobList and SearchBar 
 
 import { create } from "zustand";
-
-type JobStatus = "ALL" | "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
+import type { JobStatusFilter } from "@/types/job";
 
 interface JobFilterState {
   search: string;
-  status: JobStatus;
+  status: JobStatusFilter;
 
   setSearch: (value: string) => void;
-  setStatus: (value: JobStatus) => void;
+  setStatus: (value: JobStatusFilter) => void;
   resetFilters: () => void;
 }
 

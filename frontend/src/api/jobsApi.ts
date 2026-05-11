@@ -1,6 +1,12 @@
 //Centralize API calls.
 
-import type { Job, CreateJobRequest, JobsPageResponse, StatusSummaryResponse } from "@/types/job";
+import type {
+  Job,
+  CreateJobRequest,
+  JobsPageResponse,
+  StatusSummaryResponse,
+  JobsQueryFilters,
+} from "@/types/job";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -20,8 +26,24 @@ export async function createJob(createJobRequest: CreateJobRequest): Promise<Job
 }
 
 //getJobs()
-export async function getJobs(): Promise<Job[]> {
-  const response = await fetch(`${API_BASE_URL}/jobs`);
+export async function getJobs(filters: JobsQueryFilters = {}): Promise<Job[]> {
+  const params = new URLSearchParams();
+
+  if (filters.search?.trim()) {
+    params.set("search", filters.search.trim());
+  }
+  if (filters.status && filters.status !== "ALL") {
+    params.set("status", filters.status);
+  }
+  if (filters.page !== undefined) {
+    params.set("page", String(filters.page));
+  }
+  if (filters.size !== undefined) {
+    params.set("size", String(filters.size));
+  }
+
+  const queryString = params.toString();
+  const response = await fetch(`${API_BASE_URL}/jobs${queryString ? `?${queryString}` : ""}`);
   if (!response.ok) {
     throw new Error("Failed to fetch jobs");
   }

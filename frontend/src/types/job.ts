@@ -6,6 +6,7 @@ export const JobStatus = {
 } as const;
 
 export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+export type JobStatusFilter = JobStatus | "ALL";
 
 export interface Job {
   id: number;
@@ -33,6 +34,13 @@ export interface JobsPageResponse {
   totalPages: number;
   size: number;
   number: number;
+}
+
+export interface JobsQueryFilters {
+  search?: string;
+  status?: JobStatusFilter;
+  page?: number;
+  size?: number;
 }
 
 /*export interface UpdateJobRequest {

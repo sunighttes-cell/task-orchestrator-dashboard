@@ -3,6 +3,7 @@ package com.fedstack.demo.service;
 import com.fedstack.demo.dto.CreateJobRequest;
 import com.fedstack.demo.dto.JobResponse;
 import com.fedstack.demo.dto.StatusSummary;
+import com.fedstack.demo.exception.JobNotFoundException;
 import com.fedstack.demo.model.Job;
 import com.fedstack.demo.model.JobStatus;
 import com.fedstack.demo.repository.JobRepository;
@@ -61,7 +62,7 @@ public class JobService {
     }
 
     public JobResponse retryJob(Long jobId) {
-        Job job = jobRepository.findById(jobId).orElseThrow(() -> new RuntimeException("Job not found"));
+        Job job = jobRepository.findById(jobId).orElseThrow(() -> new JobNotFoundException(jobId));
         if (job.getStatus() != JobStatus.FAILED) {
             throw new IllegalStateException("Job must be in FAILED status to retry");
         }

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useCreateJob } from "@/hooks/useCreateJob";
+import { toast } from "sonner";
 
 //controlled inputs // loading spinner //disabled submit during mutation
 interface CreateJobModalProps {
   onClose: () => void;
+  onCreated?: () => void;
 }
 
-const CreateJobModal: React.FC<CreateJobModalProps> = ({ onClose }) => {
+const CreateJobModal: React.FC<CreateJobModalProps> = ({ onClose, onCreated }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -18,7 +20,12 @@ const CreateJobModal: React.FC<CreateJobModalProps> = ({ onClose }) => {
       { name, description },
       {
         onSuccess: () => {
+          toast.success("Job created successfully");
+          onCreated?.();
           onClose();
+        },
+        onError: () => {
+          toast.error("Failed to create job");
         },
       }
     );

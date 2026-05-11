@@ -4,11 +4,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createJob } from "@/api/jobsApi";
 import { type Job, type CreateJobRequest, JobStatus } from "@/types/job";
 
+interface CreateJobContext {
+  previousJobs?: Job[];
+}
+
 export function useCreateJob() {
   const queryClient = useQueryClient();
 
   // useMutation hook to handle create job
-  const mutation = useMutation<Job, Error, CreateJobRequest>({
+  const mutation = useMutation<Job, Error, CreateJobRequest, CreateJobContext>({
     mutationFn: createJob,
     onMutate: async (newJob) => {
       //optimistically update the cache here
@@ -19,7 +23,7 @@ export function useCreateJob() {
         }
         return { previousJobs };
     },
-    onError: (err, newJob, context) => {
+    onError: (_error, _newJob, context) => {
       //rollback cache update on error
         if (context?.previousJobs) {
           queryClient.setQueryData<Job[]>(["jobs"], context.previousJobs);
