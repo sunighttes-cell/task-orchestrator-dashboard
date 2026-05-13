@@ -1,5 +1,5 @@
 //Job List Component
-import JobCard from "@/components/jobs/DisplayJobCard";
+import StatusCard from "@/pages/jobs/components/StatusCard";
 import type { Job } from "@/types/job";
 
 interface Props {
@@ -16,11 +16,11 @@ const DisplayJobList: React.FC<Props> = ({ jobs, isLoading, error, onRetry }) =>
 
   return (
     <div>
-      <h2>Job List</h2>
-      <ul>
+      <h2 className="text-lg font-semibold">Job List</h2>
+      <ul className="text-sm text-muted-foreground">
         {jobs.map((job) => (
           <li key={job.id}>
-            <JobCard job={job} onRetry={onRetry} />
+            <StatusCard job={job} onRetry={onRetry} />
           </li>
         ))}
       </ul>

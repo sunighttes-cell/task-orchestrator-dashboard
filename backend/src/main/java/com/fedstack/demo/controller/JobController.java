@@ -1,9 +1,11 @@
 package com.fedstack.demo.controller;
 
 import com.fedstack.demo.dto.CreateJobRequest;
+import com.fedstack.demo.dto.DashboardMetricsResponse;
 import com.fedstack.demo.dto.JobResponse;
 import com.fedstack.demo.dto.StatusSummary;
 import com.fedstack.demo.model.JobStatus;
+import com.fedstack.demo.service.DashboardService;
 import com.fedstack.demo.service.JobService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.List;
 public class JobController {
 
     private final JobService jobService;
+    private final DashboardService dashboardService;
 
     @PostMapping
     public ResponseEntity<JobResponse> createJob(@Valid @RequestBody CreateJobRequest request) {
@@ -52,5 +55,11 @@ public class JobController {
     public ResponseEntity<List<StatusSummary>> getStatusSummary() {
         List<StatusSummary> summary = jobService.getStatusSummary();
         return ResponseEntity.ok(summary);
+    }
+
+    @GetMapping("/dashboard-metrics")
+    public ResponseEntity<DashboardMetricsResponse> getMetrics() {
+        DashboardMetricsResponse metrics = dashboardService.getMetrics();
+        return ResponseEntity.ok(metrics);
     }
 }

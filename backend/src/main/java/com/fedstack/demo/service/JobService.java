@@ -78,4 +78,5 @@ public class JobService {
     public List<StatusSummary> getStatusSummary() {
         return jobRepository.getStatusSummary();
     }
+
 }

@@ -6,7 +6,7 @@ interface Props {
   status: JobStatus;
 }
 
-const DisplayJobStatusBadge: React.FC<Props> = ({ status }) => {
+const JobStatusBadge: React.FC<Props> = ({ status }) => {
   const getBadgeColor = () => {
     switch (status) {      
       case "QUEUED":
@@ -29,4 +29,4 @@ const DisplayJobStatusBadge: React.FC<Props> = ({ status }) => {
   );
 }
 
-export default DisplayJobStatusBadge;
+export default JobStatusBadge;

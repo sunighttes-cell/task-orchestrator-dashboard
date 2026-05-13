@@ -1,15 +1,15 @@
 //Create Dashboard Page
 
-import CreateJobForm from "@/components/jobs/CreateJobForm";
-import DisplayJobList from "@/components/jobs/DisplayJobList";
-import { useJobs } from "@/hooks/useJobs";
-import SummaryGrid from "@/components/jobs/SummaryGrid";
+import CreateJobForm from "@/pages/jobs/components/CreateJobForm";
+import DisplayJobList from "@/pages/jobs/components/StatusGrid";
+import { useJobs} from "@/hooks/useJobs";
+import { useJobSummary } from "@/hooks/useJobSummary";
+import SummaryGrid from "@/pages/jobs/components/SummaryGrid";
 import { useSearchParams } from "react-router-dom";
 import { useCallback, useEffect } from "react";
-import { useJobFilterStore } from "./../store/useJobFilterStore";
+import { useJobFilterStore } from "../../store/useJobFilterStore";
 import { useDebounce } from "use-debounce";
-import { JobStatusFilter } from "@/components/jobs/JobStatusFilter";
-import { JobSearchInput } from "@/components/jobs/JobSearchInput";
+import { JobStatusFilter } from "@/pages/jobs/components/JobStatusFilter";
 import type { JobStatusFilter as JobStatusFilterValue } from "@/types/job";
 
 const statuses: JobStatusFilterValue[] = ["ALL", "QUEUED", "RUNNING", "COMPLETED", "FAILED"];
@@ -30,6 +30,8 @@ export function Dashboard() {
     search: debouncedSearch,
     status,
   });
+
+  const {data: datasummary} = useJobSummary();
 
   const refetchJobs = useCallback(() => {
     void refetch();
@@ -55,9 +57,8 @@ export function Dashboard() {
 
   return (
     <div>
-      <JobSearchInput />
       <JobStatusFilter />
-      <SummaryGrid jobs={jobList}/>
+      <SummaryGrid datasummary={datasummary}/>
       <CreateJobForm onJobCreated={refetchJobs} />
       {isLoading && <p>Loading jobs...</p>}
       {error && <p>Failed to load jobs: {error.message}</p>}
