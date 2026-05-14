@@ -17,7 +17,7 @@ export function AppSidebar() {
     <aside className=
         {`
           fixed left-0 top-0 z-50 h-full w-64
-          border-r bg-white transition-transform
+          border-r bg-white dark:bg-gray-900 transition-transform
           lg:static lg:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
@@ -41,13 +41,12 @@ export function AppSidebar() {
                 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors
                 ${
                   isActive
-                    ? "bg-black text-white"
-                    : "hover:bg-gray-100"
+                    ? "bg-black dark:bg-gray-900 text-white" 
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 }
               `}
             >
               <Icon className="h-4 w-4" />
-
               <span>{item.title}</span>
             </Link>
           );
@@ -55,5 +54,7 @@ export function AppSidebar() {
       </nav>
     </aside>
     </>
+
   );
 }
+

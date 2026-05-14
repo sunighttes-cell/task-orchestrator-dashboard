@@ -4,11 +4,17 @@ import type { StatusSummaryResponse } from "@/types/job";
 
 interface Props {
   summary: StatusSummaryResponse;
+  isSelected?: boolean;
+  onClick?: () => void;
 }
 
-const SummaryCard: React.FC<Props> = ({ summary }) => {
+const SummaryCard: React.FC<Props> = ({
+  summary,
+  isSelected = false,
+  onClick,
+}) => {
   const getStatusColor = () => {
-    switch (summary.status) {      
+    switch (summary.status) {
       case "QUEUED":
         return "text-yellow-500";
       case "RUNNING":
@@ -23,14 +29,23 @@ const SummaryCard: React.FC<Props> = ({ summary }) => {
   };
 
   return (
-    <Card className="border p-4 rounded">
-      <CardContent>
-        <h1 className="text-lg font-bold">{summary.count}</h1>
-        <p className={`font-bold ${getStatusColor()}`}>{summary.status}</p>
+    <Card
+      onClick={onClick}
+      className={`
+        border p-4 rounded cursor-pointer transition
+        dark:bg-gray-900
+        ${isSelected ? "ring-2 ring-blue-500 bg-blue-50" : "hover:bg-gray-100"}
+      `}
+    >
+      <CardContent className="flex flex-col items-start">
+        <h1 className="text-2xl font-bold">{summary.count}</h1>
+        <p className={`text-sm font-medium ${getStatusColor()}`}>
+          {summary.status}
+        </p>
       </CardContent>
     </Card>
   );
-}
+};
 
-export default SummaryCard;     
+export default SummaryCard; 
 

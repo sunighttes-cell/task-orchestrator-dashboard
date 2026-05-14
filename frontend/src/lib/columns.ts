@@ -1,6 +1,6 @@
 import type {Column} from "@tanstack/react-table";
 
-export function getCommonPinningStyles<T>(column: Column<T>): React.CSSProperties {
+export function getCommonPinningStyles<T>(column: Column<T>) {
     const isPinned = column.getIsPinned();
     const isLastLeftPinnedColumn =
 		isPinned === "left" && column.getIsLastColumn("left");

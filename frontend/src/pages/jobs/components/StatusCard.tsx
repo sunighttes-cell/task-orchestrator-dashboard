@@ -21,7 +21,7 @@ const StatusCard: React.FC<Props> = ({ job, onRetry }) => {
   };
 
   return (
-    <Card>
+    <Card className="border p-4 rounded dark:bg-gray-900">
       <CardHeader>
         <h3 className="text-lg font-bold">{job.name}</h3>
         <p>Status: </p> 
