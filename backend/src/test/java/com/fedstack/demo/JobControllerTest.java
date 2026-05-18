@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.RequestEntity.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -69,24 +70,30 @@ class JobControllerTest {
 
     //test delete
     @Test
-    void shouldDeleteJob() throws Exception {
+    void shouldDeleteCompletedJob() throws Exception {
         Job job = new Job();
-        job.setName("Test Job Two");
-        job.setDescription("Test Description Two");
+        job.setName("Test Job");
+        job.setDescription("Test Description");
         job.setDeleted(false);
         job.setRetryCount(3);
-        job.setStatus(JobStatus.QUEUED);
-        job.setQueuedAt(LocalDateTime.now());
-
+        job.setStatus(JobStatus.COMPLETED);
         jobRepository.saveAndFlush(job);
-        Long jobId = job.getId();
 
-        mockMvc.perform(delete("/jobs/{id}", jobId))
+        mockMvc.perform(delete("/jobs/{id}", job.getId()))
                 .andExpect(status().isNoContent());
+    }
+    @Test
+    void shouldNotDeleteRunningJob() throws Exception {
+        Job job = new Job();
+        job.setName("Test Job");
+        job.setDescription("Test Description");
+        job.setDeleted(false);
+        job.setRetryCount(3);
+        job.setStatus(JobStatus.RUNNING);
+        jobRepository.saveAndFlush(job);
 
-        Job deletedJob = jobRepository.findById(jobId).orElseThrow();
-
-        assertTrue(deletedJob.getDeleted());
+        mockMvc.perform(delete("/jobs/{id}", job.getId()))
+                .andExpect(status().isConflict());
     }
 
     //validation tests
