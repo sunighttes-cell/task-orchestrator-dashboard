@@ -6,28 +6,47 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.servlet.MockMvc;
 
-import java.io.IOException;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
+@SpringBootTest
+@AutoConfigureMockMvc
 class TaskOrchestratorApplicationTests {
+
+	@Autowired
+	private MockMvc mockMvc;
 
 	@Test
 	void contextLoads() {
+		// sanity check
 	}
 
 	@Test
-	void allowsFrontendCorsRequests() throws ServletException, IOException {
-		MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/jobs");
-		request.addHeader("Origin", "http://localhost:5173");
-		request.addHeader("Access-Control-Request-Method", "GET");
-		MockHttpServletResponse response = new MockHttpServletResponse();
-
-		new CorsConfig().corsFilter().doFilter(request, response, new MockFilterChain());
-
-		assertEquals(200, response.getStatus());
-		assertEquals("http://localhost:5173", response.getHeader("Access-Control-Allow-Origin"));
+	void allowsFrontendCorsRequests() throws Exception {
+		mockMvc.perform(
+						options("/jobs") // any endpoint works
+								.header("Origin", "https://orchestrator-dashboard.vercel.app")
+								.header("Access-Control-Request-Method", "GET")
+				)
+				.andExpect(status().isOk())
+				.andExpect(header().string("Access-Control-Allow-Origin",
+						"https://orchestrator-dashboard.vercel.app"))
+				.andExpect(header().exists("Access-Control-Allow-Methods"));
 	}
 
+	@Test
+	void blocksUnknownOrigins() throws Exception {
+		mockMvc.perform(
+						options("/jobs")
+								.header("Origin", "https://malicious-site.com")
+								.header("Access-Control-Request-Method", "GET")
+				)
+				.andExpect(status().isForbidden());
+	}
 }
