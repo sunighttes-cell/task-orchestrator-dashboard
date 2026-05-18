@@ -6,8 +6,6 @@ import JobsPage from "./JobsPage";
 import { server } from "@/test/mock/server";
 import { http, HttpResponse } from "msw";
 
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
 describe("JobsPage", () => {
   it("renders jobs from API", async () => {
     renderWithProviders(<JobsPage />);
@@ -17,7 +15,7 @@ describe("JobsPage", () => {
 
   it("handles API error", async () => {
     server.use(
-      http.get(`${API}/jobs`, () => new HttpResponse(null, { status: 500 }))
+      http.get("/jobs", () => new HttpResponse(null, { status: 500 }))
     );
 
     renderWithProviders(<JobsPage />);
@@ -39,10 +37,12 @@ describe("JobsPage", () => {
     renderWithProviders(<JobsPage />);
 
     const next = await screen.findByRole("button", { name: /next/i });
+    await waitFor(() => expect(next).not.toBeDisabled());
     await user.click(next);
 
     await waitFor(() => {
-      expect(screen.getByText(/page 2/i)).toBeInTheDocument();
+      const prev = screen.getByRole("button", { name: /prev/i });
+      expect(prev).not.toBeDisabled();
     });
   });
 
@@ -51,12 +51,15 @@ describe("JobsPage", () => {
 
     renderWithProviders(<JobsPage />);
 
-    const header = await screen.findByText(/status/i);
+    const header = await screen.findByRole("columnheader", {
+      name: /status/i,
+    });
+
     await user.click(header);
 
-    // behavior-based assertion instead of URL hack
     await waitFor(() => {
-      expect(screen.getAllByRole("row").length).toBeGreaterThan(1);
+      const rows = screen.getAllByRole("row");
+      expect(rows.length).toBeGreaterThan(1);
     });
   });
 });

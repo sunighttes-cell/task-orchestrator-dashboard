@@ -5,14 +5,12 @@ import { createWrapper } from "@/test/utils/react-query";
 import { useJobSummary } from "./useJobSummary";
 import { createMockSummary } from "@/test/factories/job";
 
-const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
 describe("useJobSummary", () => {
   it("returns summary data on success", async () => {
     const mock = createMockSummary();
 
     server.use(
-      http.get(`${API}/jobs/status-summary`, () =>
+      http.get("/jobs/status-summary", () =>
         HttpResponse.json([mock])
       )
     );
@@ -21,14 +19,16 @@ describe("useJobSummary", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
 
     expect(result.current.data).toEqual([mock]);
   });
 
-  it("returns error on failure", async () => {
+  it("returns error state on failure", async () => {
     server.use(
-      http.get(`${API}/jobs/status-summary`, () =>
+      http.get("/jobs/status-summary", () =>
         new HttpResponse(null, { status: 500 })
       )
     );
@@ -37,6 +37,10 @@ describe("useJobSummary", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    expect(result.current.data).toBeUndefined();
   });
 });

@@ -24,8 +24,12 @@ describe("DashboardPage", () => {
   it("renders summary cards", async () => {
     renderWithProviders(<DashboardPage />);
 
-    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
-    expect(screen.getByText("FAILED")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /completed/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /failed/i })
+    ).toBeInTheDocument();
   });
 
   it("navigates when clicking a card", async () => {
@@ -33,7 +37,9 @@ describe("DashboardPage", () => {
 
     renderWithProviders(<DashboardPage />);
 
-    const failedCard = await screen.findByText("FAILED");
+    const failedCard = await screen.findByRole("button", {
+      name: /failed/i,
+    });
 
     await user.click(failedCard);
 

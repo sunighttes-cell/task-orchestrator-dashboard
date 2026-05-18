@@ -16,7 +16,16 @@ const SummaryCard: React.FC<Props> = ({
 
   return (
     <Card
+      role="button"
+      tabIndex={0}
+      aria-label={`${summary.status} ${summary.count}`}
       onClick={() => onClick?.(summary.status)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.(summary.status);
+        }
+      }}
       className={`
         border p-4 rounded cursor-pointer transition
         dark:bg-gray-900

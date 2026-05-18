@@ -1,69 +1,71 @@
-//Centralize API calls.
-
 import type {
   Job,
   CreateJobRequest,
   StatusSummaryResponse,
   JobsPageResponse
 } from "@/types/job";
-import {buildQueryParams} from "@/lib/buildQueryParams"
+import { buildQueryParams } from "@/lib/buildQueryParams";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-//createJob()
-export async function createJob(createJobRequest: CreateJobRequest): Promise<Job> {
-  const response = await fetch(`${API_BASE_URL}/jobs`, {
-    method: "POST",
+//Generic request helper
+async function request<T>(
+  path: string,
+  options?: RequestInit
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(options?.headers || {}),
     },
-    body: JSON.stringify(createJobRequest),
+    ...options,
   });
-  if (!response.ok) {
-    throw new Error("Failed to create job");
+
+  if (!res.ok) {
+    const message = await res.text();
+    throw new Error(message || `Request failed: ${res.status}`);
   }
-  return response.json();
-}
 
-//getJobs()
-export async function getJobs(filters): Promise<JobsPageResponse> {
-  const queryString = buildQueryParams(filters);
-  console.log("queryString", queryString);
-
-  const res = await fetch(`${API_BASE_URL}/jobs?${queryString}`);
-  console.log("res", res);
-
-  if (!res.ok) throw new Error("Failed to fetch jobs");
+  if (res.status === 204) return {} as T;
 
   return res.json();
-};
+}
 
-//retryJob()
-export async function retryJob(jobId: number): Promise<Job> {
-  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/retry`, {
+// API METHODS
+
+// createJob
+export function createJob(
+  createJobRequest: CreateJobRequest
+): Promise<Job> {
+  return request<Job>("/jobs", {
+    method: "POST",
+    body: JSON.stringify(createJobRequest),
+  });
+}
+
+// getJobs
+export function getJobs(filters: Record<string, any>): Promise<JobsPageResponse> {
+  const queryString = buildQueryParams(filters);
+  const query = queryString ? `?${queryString}` : "";
+
+  return request<JobsPageResponse>(`/jobs${query}`);
+}
+
+// retryJob
+export function retryJob(jobId: number): Promise<Job> {
+  return request<Job>(`/jobs/${jobId}/retry`, {
     method: "POST",
   });
-  if (!response.ok) {
-    throw new Error("Failed to retry job");
-  }
-  return response.json();
 }
 
-//getStatusSummary()
-export async function getStatusSummary(): Promise<StatusSummaryResponse[]> { 
-    const response = await fetch(`${API_BASE_URL}/jobs/status-summary`);
-    if (!response.ok) {
-        throw new Error("Failed to fetch status summary");
-    }
-    return response.json();
+// getStatusSummary
+export function getStatusSummary(): Promise<StatusSummaryResponse[]> {
+  return request<StatusSummaryResponse[]>("/jobs/status-summary");
 }
 
-//delete job
-export const deleteJob = async (id: number) => {
-  const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+// deleteJob
+export function deleteJob(id: number): Promise<void> {
+  return request<void>(`/jobs/${id}`, {
     method: "DELETE",
   });
-  if (!response.ok) {
-    throw new Error("Failed to delete job");
-  }
-};
+}
