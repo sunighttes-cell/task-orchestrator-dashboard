@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.http.RequestEntity.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -77,13 +78,15 @@ class JobControllerTest {
         job.setStatus(JobStatus.QUEUED);
         job.setQueuedAt(LocalDateTime.now());
 
-        jobRepository.save(job);
+        jobRepository.saveAndFlush(job);
         Long jobId = job.getId();
 
         mockMvc.perform(delete("/jobs/{id}", jobId))
                 .andExpect(status().isNoContent());
 
-        jobRepository.flush();
+        Job deletedJob = jobRepository.findById(jobId).orElseThrow();
+
+        assertTrue(deletedJob.getDeleted());
     }
 
     //validation tests
