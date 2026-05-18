@@ -2,6 +2,7 @@ package com.fedstack.demo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -9,6 +10,7 @@ import org.springframework.web.filter.CorsFilter;
 import java.util.List;
 
 @Configuration
+@EnableAsync
 public class CorsConfig {
 
     @Bean

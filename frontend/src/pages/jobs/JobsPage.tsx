@@ -1,113 +1,102 @@
 import { PageHeader } from "@/layout/PageHeader";
 import JobsDataTable from "./JobsDataTable";
+import {FilterDropdown} from "@/components/FilterDropdown";
 import { useJobs } from "@/hooks/useJobs";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import {useSearchParams} from "react-router-dom";
-import { useJobSummary } from "@/hooks/useJobSummary";
-import SummaryCard from "@/pages/jobs/components/SummaryCard"
-import CreateJobForm from "@/pages/jobs/components/CreateJobForm"
+import {useState, useEffect} from "react";
+import CreateJobForm from "@/pages/jobs/components/CreateJobForm";
 import {useDebounce} from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
-//import type { JobStatusFilter as JobStatusFilterValue } from "@/types/job";
-
-// const statuses: JobStatusFilterValue[] = ["ALL", "QUEUED", "RUNNING", "COMPLETED", "FAILED"];
-
-// function parseStatus(value: string | null): JobStatusFilterValue {
-//   return statuses.includes(value as JobStatusFilterValue) ? (value as JobStatusFilterValue) : "ALL";
-// }
+import { FilterSearch } from "@/components/FilterSearch";
+import {JobStatusFilterValues} from "@/lib/constants"
+import { useJobFilters } from "@/hooks/useJobFilters";
+import { EmptyData } from "@/components/EmptyData";
 
 export default function JobsPage() {
   //data // first load // background refresh
-  const { data: jobs, isLoading, isFetching } = useJobs();
-  const { data: statusSummary } = useJobSummary();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const statusFromUrl = searchParams.get("status");
-  const searchFromUrl = searchParams.get("search") ?? "";
+  //get data
+  const { filters, searchParams, setSearchParams } = useJobFilters();
+  const { data, isLoading, isFetching, isError } = useJobs(filters);
+  const jobs = data?.content ?? [];
+  const totalPages = data?.totalPages ?? 0;
 
-  const [search, setSearch] = useState(searchFromUrl);
-  const [statusFilter, setStatusFilter] = useState<string | null>(
-    statusFromUrl
-  );
+  //handle page change
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
+  };
 
-  const debouncedSearch = useDebounce(search, 300);
-
-  // const filteredJobs = useMemo(() => {
-  //   if (!statusFilter) return jobs;
-  //   return jobs.filter((job) => job.status === statusFilter);
-  // }, [jobs, statusFilter]);
-
-  // const refetchJobs = useCallback(() => {
-  //   void refetch();
-  // }, [refetch]);
-
-  // sync URL
-  // useEffect(() => {
-  //   if (statusFilter) {
-  //     setSearchParams({ status: statusFilter });
-  //   } else {
-  //     setSearchParams({});
-  //   }
-  // }, [statusFilter]);
-
-  const filteredJobs = useMemo(() => {
-      return jobs.filter((job) => {
-
-    const matchesStatus = statusFilter ? job.status === statusFilter : true;
-    const matchesSearch = debouncedSearch
-      ? job.name.toLowerCase().includes(debouncedSearch.toLowerCase()) : true;
-      return matchesStatus && matchesSearch;
-    });
-  }, [jobs, statusFilter, debouncedSearch]);
+  //handle search
+  const [searchInput, setSearchInput] = useState(filters.search ?? "");
+  const debouncedSearch = useDebounce(searchInput, 300);
 
   useEffect(() => {
-    const params: Record<string, string> = {};
+    const params = new URLSearchParams(searchParams);
 
-    if (statusFilter) params.status = statusFilter;
-    if (debouncedSearch) params.search = debouncedSearch;
+    if (debouncedSearch) {
+      params.set("search", debouncedSearch);
+    } else {
+      params.delete("search");
+    }
+
+    params.set("page", "0");
+
     setSearchParams(params);
-  }, [statusFilter, debouncedSearch]);
+  }, [debouncedSearch]);
+
+  //handle status/filter change
+  const handleStatusChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+
+    if (!value || value.toLowerCase() === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", value);
+    }
+
+    params.set("page", "0");
+
+    setSearchParams(params);
+  };
+
+  useEffect(() => {
+    setSearchInput(filters.search ?? "");
+  }, [filters.search]);
 
   return (
       <div className="space-y-6 p-6">
         <PageHeader title="Jobs" description="Browse and manage orchestration jobs" />
-        <div><CreateJobForm /></div>
-        <div className="flex gap-4 mb-4">
-          {statusSummary.map((item) => (
-            <SummaryCard
-              key={item.status}
-              summary={item}
-              isSelected={statusFilter === item.status}
-              onClick={() =>
-                setStatusFilter((prev) => prev === item.status ? null : item.status)
-              }
-            />
-          ))}
-        </div>
-        {/* Search */}
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search jobs..."
-          className="mb-4 p-2 border rounded w-full"
-        />
+        {/* Create Jobs */}
+        <div><CreateJobForm/></div>
+        {/* Search Jobs*/}
+        <FilterSearch search={searchInput} onChange={setSearchInput}/>
+        {/*Filter Jobs*/}
+        <FilterDropdown 
+        status={filters.status ?? "ALL"}
+        optionValues={JobStatusFilterValues} 
+        onChange = {handleStatusChange}>
+        </FilterDropdown>
         {isFetching && (
           <div className="text-sm text-gray-500 mb-2">
             <Empty>Updating...</Empty>
           </div>
         )}
         {isLoading ? (
-            <Skeleton />
-        ) : !filteredJobs || filteredJobs.length === 0 ? (
-            <Empty>
-              <EmptyTitle>No Jobs Found</EmptyTitle>
-              <EmptyDescription>
-                Try adjusting your search or filter to find what you're looking for.
-              </EmptyDescription>
-            </Empty>
-        ) : (
-            <JobsDataTable jobs={filteredJobs ?? []} />
+            <div role="status" aria-label="Loading">
+              <Skeleton />
+              <span className="sr-only">Loading...</span>
+            </div>
+        ) : isError ? (
+            <div role="alert">Error loading jobs</div>
+        ) : !jobs  || jobs.length === 0 ? (<EmptyData/>
+) : (
+            <JobsDataTable 
+            jobs={jobs} 
+            totalPages={totalPages} 
+            handlePageChange={handlePageChange}
+            page={filters.page}/>
         )}
       </div>
   );

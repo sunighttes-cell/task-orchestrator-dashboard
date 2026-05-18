@@ -35,6 +35,15 @@ public class JobSpecification {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("retryCount"), retryCount);
     }
+
+    public static Specification<Job> isNotDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("deleted")),
+                        criteriaBuilder.isFalse(root.get("deleted"))
+                );
+    }
+
     public static Specification<Job> createdAfter(LocalDateTime createdAt) {
         return (root, query, criteriaBuilder) -> {
             if (createdAt == null) {

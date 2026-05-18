@@ -3,10 +3,10 @@
 import type {
   Job,
   CreateJobRequest,
-  JobsPageResponse,
   StatusSummaryResponse,
-  JobsQueryFilters,
+  JobsPageResponse
 } from "@/types/job";
+import {buildQueryParams} from "@/lib/buildQueryParams"
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -26,30 +26,17 @@ export async function createJob(createJobRequest: CreateJobRequest): Promise<Job
 }
 
 //getJobs()
-export async function getJobs(filters: JobsQueryFilters = {}): Promise<Job[]> {
-  const params = new URLSearchParams();
+export async function getJobs(filters): Promise<JobsPageResponse> {
+  const queryString = buildQueryParams(filters);
+  console.log("queryString", queryString);
 
-  if (filters.search?.trim()) {
-    params.set("search", filters.search.trim());
-  }
-  if (filters.status && filters.status !== "ALL") {
-    params.set("status", filters.status);
-  }
-  if (filters.page !== undefined) {
-    params.set("page", String(filters.page));
-  }
-  if (filters.size !== undefined) {
-    params.set("size", String(filters.size));
-  }
+  const res = await fetch(`${API_BASE_URL}/jobs?${queryString}`);
+  console.log("res", res);
 
-  const queryString = params.toString();
-  const response = await fetch(`${API_BASE_URL}/jobs${queryString ? `?${queryString}` : ""}`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch jobs");
-  }
-  const data = (await response.json()) as JobsPageResponse | Job[];
-  return Array.isArray(data) ? data : data.content;
-}
+  if (!res.ok) throw new Error("Failed to fetch jobs");
+
+  return res.json();
+};
 
 //retryJob()
 export async function retryJob(jobId: number): Promise<Job> {
@@ -70,3 +57,13 @@ export async function getStatusSummary(): Promise<StatusSummaryResponse[]> {
     }
     return response.json();
 }
+
+//delete job
+export const deleteJob = async (id: number) => {
+  const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete job");
+  }
+};

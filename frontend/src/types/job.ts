@@ -36,18 +36,20 @@ export interface JobsPageResponse {
   number: number;
 }
 
+export type PageResponse<T> = {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+};
+
 export interface JobsQueryFilters {
   search?: string;
   status?: JobStatusFilter;
   page?: number;
   size?: number;
 }
-
-/*export interface UpdateJobRequest {
-  name?: string;
-  description?: string;
-  status?: JobStatus;
-} */ 
 
 export interface StatusSummaryResponse {
   status: JobStatus;

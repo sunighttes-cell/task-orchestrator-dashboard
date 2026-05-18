@@ -7,6 +7,9 @@ export function AppSidebar() {
   const isOpen = useSidebarStore(
     (state) => state.isOpen
   );
+  const close = useSidebarStore(
+    (state) => state.close
+  );
 
   return (
     <>
@@ -37,11 +40,12 @@ export function AppSidebar() {
             <Link
               key={item.href}
               to={item.href}
+              onBlur={() => close()}
               className={`
                 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors
                 ${
                   isActive
-                    ? "bg-black dark:bg-gray-900 text-white" 
+                    ? "bg-black dark:bg-gray-800 text-white" 
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 }
               `}

@@ -12,11 +12,13 @@ import jakarta.validation.constraints.Size;
 //Add Base Entity Annotations
 @Entity
 @Table(name = "jobs")
+@Data
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Job {
 
 //primary key
@@ -44,6 +46,9 @@ private JobStatus status;
     @Builder.Default
     @Column(nullable = false)
     private Integer retryCount = 0;
+
+    @Column(nullable = false)
+    private Boolean deleted = false;
 
 //timestamps
 @CreationTimestamp

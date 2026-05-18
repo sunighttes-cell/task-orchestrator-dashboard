@@ -1,5 +1,6 @@
 package com.fedstack.demo.controller;
 
+import ch.qos.logback.classic.Logger;
 import com.fedstack.demo.dto.CreateJobRequest;
 import com.fedstack.demo.dto.DashboardMetricsResponse;
 import com.fedstack.demo.dto.JobResponse;
@@ -12,10 +13,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.Console;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -34,14 +37,31 @@ public class JobController {
 
     @GetMapping
     public ResponseEntity<Page<JobResponse>> getJobs(
-            @RequestParam(required = false) JobStatus status,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) LocalDateTime createdAt,
             @RequestParam(required = false) Integer retryCount,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<JobResponse> jobs = jobService.getJobs(status, search, createdAt, retryCount, pageable);
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        size = Math.min(size, 100);
+
+        JobStatus parsedStatus = null;
+
+        if (status != null) {
+            try {
+                parsedStatus = JobStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<JobResponse> jobs =
+                jobService.getJobs(parsedStatus, search, createdAt, retryCount, pageable);
+
         return ResponseEntity.ok(jobs);
     }
 
@@ -61,5 +81,12 @@ public class JobController {
     public ResponseEntity<DashboardMetricsResponse> getMetrics() {
         DashboardMetricsResponse metrics = dashboardService.getMetrics();
         return ResponseEntity.ok(metrics);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteJob(@PathVariable Long id) {
+        Pageable p = PageRequest.of(0, 100);
+        jobService.deleteJob(id, p);
+        return ResponseEntity.noContent().build();
     }
 }

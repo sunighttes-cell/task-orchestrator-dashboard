@@ -15,10 +15,10 @@ public class DashboardService {
     private final ExecutionRepository executionRepository;
 
     public DashboardMetricsResponse getMetrics() {
-        long totalJobs = jobRepository.count();
-        long completedJobs = jobRepository.countByStatus(JobStatus.COMPLETED);
-        long runningJobs = jobRepository.countByStatus(JobStatus.RUNNING);
-        long failedJobs = jobRepository.countByStatus(JobStatus.FAILED);
+        long totalJobs = jobRepository.countActive();
+        long completedJobs = jobRepository.countActiveByStatus(JobStatus.COMPLETED);
+        long runningJobs = jobRepository.countActiveByStatus(JobStatus.RUNNING);
+        long failedJobs = jobRepository.countActiveByStatus(JobStatus.FAILED);
         double successRate = totalJobs == 0 ? 0 : (completedJobs * 100.0) / totalJobs;
         Double avgExecutionTime = executionRepository.averageExecutionTime();
 

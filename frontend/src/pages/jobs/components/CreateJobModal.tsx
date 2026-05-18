@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useCreateJob } from "@/hooks/useCreateJob";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
 
 const createJobSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -76,7 +77,7 @@ const CreateJobModal = ({ onClose}: { onClose: () => void}) => {
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-gray-500"
+            className={SecondaryBtnClass}
           >
             Cancel
           </button>
@@ -84,7 +85,7 @@ const CreateJobModal = ({ onClose}: { onClose: () => void}) => {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50">
+            className={PrimaryBtnClass}>
             {mutation.isPending ? "Creating..." : "Create"}
           </button>
         </div>

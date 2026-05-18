@@ -8,6 +8,7 @@ import com.fedstack.demo.model.Job;
 import com.fedstack.demo.model.JobStatus;
 import com.fedstack.demo.repository.JobRepository;
 import com.fedstack.demo.repository.specification.JobSpecification;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,33 +31,40 @@ public class JobService {
                 .status(JobStatus.QUEUED)
                 .queuedAt(LocalDateTime.now())
                 .retryCount(0)
+                .deleted(false)
+                .failureReason(null)
                 .build();
         Job savedJob = jobRepository.save(job);
         return JobResponse.fromJob(savedJob);
     }
 
-    public Page<JobResponse> getJobs(JobStatus status, String search, LocalDateTime createdAfter, Integer retryCount, Pageable pageable) {
-        Specification<Job> spec = Specification.allOf();
+    public Page<JobResponse> getJobs(
+            JobStatus status,
+            String search,
+            LocalDateTime createdAfter,
+            Integer retryCount,
+            Pageable pageable
+    ) {
+        Specification<Job> spec = Specification.unrestricted();
+        spec = spec.and(JobSpecification.isNotDeleted());
+
         if (status != null) {
             spec = spec.and(JobSpecification.hasStatus(status));
         }
-        if (search != null && !search.trim().isEmpty()) {
-            spec = spec.and(JobSpecification.search(search));
+
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(JobSpecification.search(search.trim()));
         }
-        //Retry Count Filter
+
         if (retryCount != null) {
             spec = spec.and(JobSpecification.hasRetryCount(retryCount));
         }
-        //Date Range Filter
+
         if (createdAfter != null) {
             spec = spec.and(JobSpecification.createdAfter(createdAfter));
         }
-        //Running Jobs Only
-        if (status == JobStatus.RUNNING) {
-            spec = spec.and(JobSpecification.hasStatus(JobStatus.RUNNING));
-        }
 
-        //filters, paginates, sorts all automatically
+        //filters, paginates, sorts
         Page<Job> jobs = jobRepository.findAll(spec, pageable);
         return jobs.map(JobResponse::fromJob);
     }
@@ -79,4 +87,18 @@ public class JobService {
         return jobRepository.getStatusSummary();
     }
 
+    @Transactional
+    public void deleteJob(Long id, Pageable pageable) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException(id));
+
+        // prevent deleting running jobs
+        if (job.getStatus() == JobStatus.RUNNING) {
+            throw new IllegalStateException("Cannot delete a running job");
+        }
+
+        //soft delete
+        job.setDeleted(true);
+        jobRepository.save(job);
+    }
 }

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { SimpleDataTable } from "@/components/tables/SimpleDataTable";
 
-export default function JobsDataTable({ jobs }) {
+export default function JobsDataTable({ jobs, totalPages, page, handlePageChange}) {
   
   const columns = useMemo(() => [
     {
@@ -18,5 +18,9 @@ export default function JobsDataTable({ jobs }) {
     },
   ], []);
 
-  return <SimpleDataTable columns={columns} data={jobs} />;
+  return <SimpleDataTable 
+  columns={columns} data={jobs} 
+  totalPages={totalPages} 
+  page={page} 
+  handlePageChange={handlePageChange}/>;
 }

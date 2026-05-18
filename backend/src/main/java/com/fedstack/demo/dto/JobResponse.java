@@ -24,6 +24,8 @@ public class JobResponse {
     private LocalDateTime updatedAt;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
+    private String failureReason;
+    private LocalDateTime queuedAt;
 
     public static JobResponse fromJob(Job job) {
         return JobResponse.builder()
@@ -36,6 +38,8 @@ public class JobResponse {
                 .updatedAt(job.getUpdatedAt())
                 .startedAt(job.getStartedAt())
                 .completedAt(job.getCompletedAt())
+                .failureReason(job.getFailureReason())
+                .queuedAt(job.getQueuedAt())
                 .build();
     }
 }
