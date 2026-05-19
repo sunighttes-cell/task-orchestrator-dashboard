@@ -13,9 +13,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.http.RequestEntity.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -130,5 +127,43 @@ class JobControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(longName))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn404_whenJobNotFound() throws Exception {
+        mockMvc.perform(delete("/jobs/{id}", 999999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("JOB_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldReturn409_whenInvalidState() throws Exception {
+        Job job = new Job();
+        job.setName("Test Job");
+        job.setDescription("Test Description");
+        job.setDeleted(false);
+        job.setRetryCount(3);
+        job.setStatus(JobStatus.RUNNING);
+        jobRepository.saveAndFlush(job);
+
+        mockMvc.perform(delete("/jobs/{id}", job.getId()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_JOB_STATE"));
+    }
+
+    @Test
+    void shouldReturnValidationErrors() throws Exception {
+        String invalidBody = """
+        {
+          "name": ""
+        }
+        """;
+
+        mockMvc.perform(post("/jobs")
+                        .contentType("application/json")
+                        .content(invalidBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors.name").exists());
     }
 }

@@ -230,16 +230,5 @@ class JobRepositoryTest {
         List<Job> jobs = jobRepository.findAllById(ids);
         assertEquals(0, jobs.size());
     }
-//
-//    @Test
-//    void debugInsertOnly() {
-//        Job job = new Job();
-//        job.setName("DEBUG");
-//        job.setStatus(JobStatus.QUEUED);
-//
-//        job = jobRepository.saveAndFlush(job);
-//
-//        assertNotNull(job.getId());
-//    }
 
 }
