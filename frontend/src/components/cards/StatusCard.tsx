@@ -6,7 +6,8 @@ import {PrimaryBtnClass, SecondaryBtnClass, StatusBgColor} from "@/lib/constants
 import {normalizeName, normalizeStatus} from "@/lib/normalizeJob";
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { useDeleteJob } from "@/hooks/useDeleteJob";
+import { useDeleteJob } from "@/hooks/jobs/useDeleteJob";
+import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,6 +19,8 @@ const StatusCard: React.FC<Props> = ({ job, onRetry }) => {
   const status = normalizeStatus(job.status);
   const badgeColor = StatusBgColor[status];
   const { mutate: deleteJob } = useDeleteJob();
+  const { auth } = useAuth();
+  const isAdmin = auth.user?.role === "ADMIN";
 
   const handleDelete = async () => {
     try{
@@ -50,12 +53,22 @@ const StatusCard: React.FC<Props> = ({ job, onRetry }) => {
       </div>
       <CardAction>
           <div className="flex gap-2 mt-4">
-            <button type="button" className={SecondaryBtnClass} onClick={handleDelete}>
-            Delete
+            <button
+              type="button"
+              className={SecondaryBtnClass}
+              onClick={() => {
+                if (!isAdmin) {
+                  toast.error("only admin can delete a job");
+                  return;
+                }
+                handleDelete();
+              }}
+            >
+              Delete
             </button>
-            <button type="button" className={PrimaryBtnClass} onClick={handleRetry} 
-            disabled={job.status !== "FAILED"}>
-            Retry
+            <button type="button" className={PrimaryBtnClass} onClick={handleRetry}
+              disabled={job.status !== "FAILED"}>
+              Retry
             </button>
           </div>
       </CardAction>

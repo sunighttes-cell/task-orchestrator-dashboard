@@ -8,3 +8,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+
+jwt:
+  secret: test-secret-key-please-change-me-32bytes!!
+  expiration: 3600000

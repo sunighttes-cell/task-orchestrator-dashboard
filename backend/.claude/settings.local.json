@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat /Users/milkhoney/projects/task-orchestrator/docker-compose.yml)",
+      "Bash(./mvnw compile *)"
+    ]
+  }
+}

@@ -4,7 +4,9 @@ import {
   createMockSummary,
   createMockMetrics,
 } from "../factories/job";
+import { createMockProfile } from "../factories/profile";
 import { JobStatus } from "@/types/job";
+import type { UserProfile } from "@/types/profile";
 
 const STATUSES = [JobStatus.COMPLETED, JobStatus.RUNNING, JobStatus.FAILED];
 
@@ -20,9 +22,18 @@ function buildInitialJobs() {
 }
 
 let jobs = buildInitialJobs();
+let mockProfile = createMockProfile();
 
 export function resetMockJobs() {
   jobs = buildInitialJobs();
+}
+
+export function resetMockProfile() {
+  mockProfile = createMockProfile();
+}
+
+export function updateMockProfile(profile: Partial<UserProfile>) {
+  mockProfile = { ...mockProfile, ...profile };
 }
 
 //filter + paginate
@@ -116,5 +127,38 @@ export const handlers = [
     jobs = jobs.filter((j) => j.id !== id);
 
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // profile endpoints
+  http.get("/profile", () => {
+    return HttpResponse.json(mockProfile);
+  }),
+
+  http.put("/profile", async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    mockProfile = { ...mockProfile, ...body };
+    return HttpResponse.json(mockProfile);
+  }),
+
+  http.post("/profile/avatar", async ({ request }) => {
+    // Simulate file upload by creating a data URL
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return HttpResponse.json(
+        { error: "No file provided" },
+        { status: 400 }
+      );
+    }
+
+    // In real scenario, backend would save file and return URL
+    // For testing, we create a data URL
+    const arrayBuffer = await file.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: file.type });
+    const url = URL.createObjectURL(blob);
+
+    mockProfile = { ...mockProfile, profilePictureUrl: url };
+    return HttpResponse.json(mockProfile, { status: 200 });
   }),
 ];

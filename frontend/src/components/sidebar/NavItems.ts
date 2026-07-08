@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   BriefcaseBusiness,
+  User,
 } from "lucide-react";
 
 export const navItems = [
@@ -13,5 +14,10 @@ export const navItems = [
     title: "Jobs",
     href: "/jobs",
     icon: BriefcaseBusiness,
+  },
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: User,
   },
 ];

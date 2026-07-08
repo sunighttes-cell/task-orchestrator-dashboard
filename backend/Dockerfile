@@ -1,20 +1,21 @@
-# Use official Java 21 image
-FROM eclipse-temurin:21-jdk
+# ---------- BUILD STAGE ----------
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy everything into container
-COPY . .
+COPY pom.xml .
+RUN mvn -B -q -e -DskipTests dependency:go-offline
 
-# Make mvnw executable
-RUN chmod +x mvnw
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# ---------- RUNTIME STAGE ----------
+FROM eclipse-temurin:21-jdk-jammy
 
-# Expose port (Render uses dynamic port, but this is fine)
+WORKDIR /app
+
+COPY --from=builder /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# Start the app
-CMD ["sh", "-c", "java -jar target/*.jar"]
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

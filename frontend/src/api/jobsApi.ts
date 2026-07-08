@@ -2,70 +2,56 @@ import type {
   Job,
   CreateJobRequest,
   StatusSummaryResponse,
-  JobsPageResponse
+  JobsPageResponse,
 } from "@/types/job";
-import { buildQueryParams } from "@/lib/buildQueryParams";
+import apiClient from "./client";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-
-//Generic request helper
-async function request<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options?.headers || {}),
-    },
-    ...options,
-  });
-
-  if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || `Request failed: ${res.status}`);
-  }
-
-  if (res.status === 204) return {} as T;
-
-  return res.json();
+// getLoginToken
+export async function getLoginToken(
+  loginData: Record<string, string>
+): Promise<{ accessToken: string, refreshToken: string }> {
+  const res = await apiClient.post("/auth/login", loginData);
+  return res.data;
 }
 
-// API METHODS
+//get refresh token
+export async function getRefreshToken(
+  refreshToken: string
+): Promise<{ accessToken: string, refreshToken: string }>  {
+  const res = await apiClient.post("/auth/refresh", { refreshToken });
+  return res.data;
+}
 
 // createJob
-export function createJob(
+export async function createJob(
   createJobRequest: CreateJobRequest
 ): Promise<Job> {
-  return request<Job>("/jobs", {
-    method: "POST",
-    body: JSON.stringify(createJobRequest),
-  });
+  const res = await apiClient.post("/jobs", createJobRequest);
+  return res.data;
 }
 
 // getJobs
-export function getJobs(filters: Record<string, any>): Promise<JobsPageResponse> {
-  const queryString = buildQueryParams(filters);
-  const query = queryString ? `?${queryString}` : "";
-
-  return request<JobsPageResponse>(`/jobs${query}`);
+//Axios handles encoding safely. We can pass the filters as an object to the params option, and Axios will take care of encoding them properly. This way, we avoid any issues with special characters in the filter values.
+export async function getJobs(
+  filters: Record<string, any>
+): Promise<JobsPageResponse> {
+  const res = await apiClient.get("/jobs", { params: filters });
+  return res.data;
 }
 
 // retryJob
-export function retryJob(jobId: number): Promise<Job> {
-  return request<Job>(`/jobs/${jobId}/retry`, {
-    method: "POST",
-  });
+export async function retryJob(jobId: number): Promise<Job> {
+  const res = await apiClient.post(`/jobs/${jobId}/retry`);
+  return res.data;
 }
 
 // getStatusSummary
-export function getStatusSummary(): Promise<StatusSummaryResponse[]> {
-  return request<StatusSummaryResponse[]>("/jobs/status-summary");
+export async function getStatusSummary(): Promise<StatusSummaryResponse[]> {
+  const res = await apiClient.get("/jobs/status-summary");
+  return res.data;
 }
 
 // deleteJob
-export function deleteJob(id: number): Promise<void> {
-  return request<void>(`/jobs/${id}`, {
-    method: "DELETE",
-  });
+export async function deleteJob(id: number): Promise<void> {
+  await apiClient.delete(`/jobs/${id}`);
 }

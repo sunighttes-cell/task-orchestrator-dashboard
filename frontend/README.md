@@ -1,4 +1,56 @@
-# React + TypeScript + Vite
+# Task Orchestrator Frontend
+
+This frontend application provides a React-based UI for the Task Orchestrator backend service. It uses TypeScript, Vite, and various modern frontend libraries for building a responsive, type-safe application.
+
+## Architecture
+
+### SPA Routing with Nginx
+
+The frontend is served by Nginx in a Docker container configured for Single Page Application (SPA) routing. The `nginx.conf` includes a fallback rule that redirects all non-existent paths to `index.html`, enabling client-side routing to handle all navigation:
+
+```nginx
+location / {
+  try_files $uri $uri/ /index.html;
+}
+error_page 404 /index.html;
+```
+
+This configuration allows users to reload the page or share deep links without encountering 404 errors. The React Router handles all routing on the client side.
+
+### Authentication & Authorization
+
+The application implements JWT-based authentication with role-based access control:
+
+- **Token Storage**: Access and refresh tokens are stored in `sessionStorage`
+- **Token Refresh**: Automatic token refresh via axios interceptor on 401 responses
+- **Role-based Routes**: Protected routes check user roles before rendering
+- **State Persistence**: Auth state persists through page reloads via stored tokens
+
+## Development Setup
+
+```bash
+npm install
+npm run dev
+```
+
+## Building for Production
+
+```bash
+npm run build
+npm run test:run
+```
+
+## Project Structure
+
+- `src/auth/` - Authentication context, hooks, and utilities
+- `src/pages/` - Page components (Dashboard, Jobs, Login)
+- `src/components/` - Reusable UI components
+- `src/hooks/` - React hooks for API calls and auth
+- `src/layout/` - Layout components (Navbar, Sidebar, etc.)
+- `src/api/` - API client and endpoints
+- `src/types/` - TypeScript type definitions
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

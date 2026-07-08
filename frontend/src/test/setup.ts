@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
 import { server } from "@/test/mock/server";
-import { resetMockJobs } from "@/test/mock/handlers";
+import { resetMockJobs, resetMockProfile } from "@/test/mock/handlers";
 import { beforeAll, afterAll, afterEach, vi } from "vitest";
 
 // Use relative URLs in tests so MSW handlers (e.g. "/jobs") match.
@@ -12,6 +12,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => {
   server.resetHandlers();
   resetMockJobs();
+  resetMockProfile();
 });
 afterAll(() => server.close());
 
