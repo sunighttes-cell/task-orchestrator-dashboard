@@ -83,13 +83,6 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
-		<!-- MVC testing -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
 		<!-- Spring Security testing support -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
@@ -117,7 +110,6 @@
 			<scope>runtime</scope>
 			<version>0.11.5</version>
 		</dependency>
-
 	</dependencies>
 	<build>
 		<plugins>
