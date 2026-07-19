@@ -1,149 +1,308 @@
 package com.taskOrchestrator.app.auth;
+
 import com.taskOrchestrator.app.auth.application.AuthService;
 import com.taskOrchestrator.app.auth.domain.User;
 import com.taskOrchestrator.app.auth.domain.UserRepository;
+import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
+import com.taskOrchestrator.app.common.exception.DuplicateEmailException;
+import com.taskOrchestrator.app.common.exception.DuplicateUsernameException;
+import com.taskOrchestrator.app.common.support.TestData;
+import com.taskOrchestrator.app.common.support.TestUserFactory;
 import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
 import com.taskOrchestrator.app.auth.web.RegisterRequest;
-import com.taskOrchestrator.app.common.exception.DuplicateResourceException;
-import org.junit.jupiter.api.Assertions;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
+
+    @Mock
+    private JwtUtil jwtUtil;
+
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AuthService authService;
 
-    @Test
-    void shouldLoginUserSuccessfully() {
-        String username = TestDataConstants.TEST_USERNAME;
-        String password = TestDataConstants.TEST_PASSWORD;
+    @Nested
+    class Login {
 
-        User user = new User();
-        when(userRepository.save(any(User.class)))
-                .thenReturn(user);
+        @Test
+        @DisplayName("Should login successfully")
+        void shouldLoginSuccessfully() {
 
-        AuthAccessResponse response = authService.login(username, password);
-        assertEquals(TestDataConstants.TEST_ACCESS_TOKEN, response.getAccessToken());
-        assertEquals(TestDataConstants.TEST_REFRESH_TOKEN, response.getRefreshToken());
+            User user = TestUserFactory.encodedUser();
+
+            when(userRepository.findByUsername(TestData.USERNAME))
+                    .thenReturn(Optional.of(user));
+
+            when(passwordEncoder.matches(
+                    TestData.PASSWORD,
+                    user.getPassword()))
+                    .thenReturn(true);
+
+            when(jwtUtil.generateAccessToken(
+                    user.getUsername(),
+                    user.getRole()))
+                    .thenReturn(TestData.ACCESS_TOKEN);
+
+            when(jwtUtil.generateRefreshToken(
+                    user.getUsername(),
+                    user.getRole()))
+                    .thenReturn(TestData.REFRESH_TOKEN);
+
+            AuthAccessResponse response =
+                    authService.login(
+                            TestData.USERNAME,
+                            TestData.PASSWORD);
+
+            assertEquals(TestData.ACCESS_TOKEN,
+                    response.getAccessToken());
+
+            assertEquals(TestData.REFRESH_TOKEN,
+                    response.getRefreshToken());
+        }
+
+        @Test
+        @DisplayName("Should throw when username does not exist")
+        void shouldThrowWhenUserDoesNotExist() {
+
+            when(userRepository.findByUsername(TestData.USERNAME))
+                    .thenReturn(Optional.empty());
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.login(
+                            TestData.USERNAME,
+                            TestData.PASSWORD));
+        }
+
+        @Test
+        @DisplayName("Should throw when password is incorrect")
+        void shouldThrowWhenPasswordIncorrect() {
+
+            User user = TestUserFactory.encodedUser();
+
+            when(userRepository.findByUsername(TestData.USERNAME))
+                    .thenReturn(Optional.of(user));
+
+            when(passwordEncoder.matches(
+                    TestData.PASSWORD,
+                    user.getPassword()))
+                    .thenReturn(false);
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.login(
+                            TestData.USERNAME,
+                            TestData.PASSWORD));
+        }
     }
 
-    @Test
-    void shouldNotLoginUserWithInvalidCredentials() {
-        String username = TestDataConstants.TEST_INVALID_USERNAME;
-        String password = TestDataConstants.TEST_INVALID_PASSWORD;
+    @Nested
+    class Refresh {
 
-        User user = new User();
-        when(userRepository.save(any(User.class)))
-                .thenReturn(user);
+        @Test
+        @DisplayName("Should refresh token")
+        void shouldRefreshToken() {
 
-        AuthAccessResponse response = authService.login(username, password);
-        Assertions.assertNull(response.getAccessToken());
-        Assertions.assertNull(response.getRefreshToken());
+            User user = TestUserFactory.user();
+
+            when(jwtUtil.isValidRefreshToken(TestData.REFRESH_TOKEN))
+                    .thenReturn(true);
+
+            when(jwtUtil.extractUsername(TestData.REFRESH_TOKEN))
+                    .thenReturn(TestData.USERNAME);
+
+            when(userRepository.findByUsername(TestData.USERNAME))
+                    .thenReturn(Optional.of(user));
+
+            when(jwtUtil.generateAccessToken(
+                    user.getUsername(),
+                    user.getRole()))
+                    .thenReturn(TestData.ACCESS_TOKEN);
+
+            AuthAccessResponse response =
+                    authService.refresh(TestData.REFRESH_TOKEN);
+
+            assertEquals(TestData.ACCESS_TOKEN,
+                    response.getAccessToken());
+
+            assertEquals(TestData.REFRESH_TOKEN,
+                    response.getRefreshToken());
+        }
+
+        @Test
+        @DisplayName("Should reject invalid refresh token")
+        void shouldRejectInvalidRefreshToken() {
+
+            when(jwtUtil.isValidRefreshToken(
+                    TestData.INVALID_REFRESH_TOKEN))
+                    .thenReturn(false);
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.refresh(
+                            TestData.INVALID_REFRESH_TOKEN));
+        }
+
+        @Test
+        @DisplayName("Should reject expired refresh token")
+        void shouldRejectExpiredRefreshToken() {
+
+            when(jwtUtil.isValidRefreshToken(
+                    TestData.REFRESH_TOKEN))
+                    .thenThrow(mock(ExpiredJwtException.class));
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.refresh(
+                            TestData.REFRESH_TOKEN));
+        }
+
+        @Test
+        @DisplayName("Should reject malformed refresh token")
+        void shouldRejectMalformedRefreshToken() {
+
+            when(jwtUtil.isValidRefreshToken(
+                    TestData.REFRESH_TOKEN))
+                    .thenThrow(new JwtException("Bad token"));
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.refresh(
+                            TestData.REFRESH_TOKEN));
+        }
+
+        @Test
+        @DisplayName("Should reject refresh for unknown user")
+        void shouldRejectRefreshForUnknownUser() {
+
+            when(jwtUtil.isValidRefreshToken(TestData.REFRESH_TOKEN))
+                    .thenReturn(true);
+
+            when(jwtUtil.extractUsername(TestData.REFRESH_TOKEN))
+                    .thenReturn(TestData.USERNAME);
+
+            when(userRepository.findByUsername(TestData.USERNAME))
+                    .thenReturn(Optional.empty());
+
+            assertThrows(
+                    ResponseStatusException.class,
+                    () -> authService.refresh(
+                            TestData.REFRESH_TOKEN));
+        }
     }
 
-    @Test
-    void shouldNotLoginUserWithInvalidUsername() {
-        String username = TestDataConstants.TEST_INVALID_USERNAME;
-        String password = TestDataConstants.TEST_PASSWORD;
+    @Nested
+    class Register {
+        @Test
+        @DisplayName("Should register successfully")
+        void shouldRegisterSuccessfully() {
 
-        User user = new User();
-        when(userRepository.save(any(User.class)))
-                .thenReturn(user);
+            RegisterRequest request =
+                    new RegisterRequest(
+                            TestData.USERNAME,
+                            TestData.EMAIL,
+                            TestData.FULL_NAME,
+                            TestData.PASSWORD);
 
-        AuthAccessResponse response = authService.login(username, password);
-        Assertions.assertNull(response.getAccessToken());
-        Assertions.assertNull(response.getRefreshToken());
-    }
+            when(userRepository.existsByUsername(TestData.USERNAME))
+                    .thenReturn(false);
 
-    @Test
-    void shouldNotLoginUserWithInvalidPassword() {
-        String username = TestDataConstants.TEST_USERNAME;
-        String password = TestDataConstants.TEST_INVALID_PASSWORD;
+            when(userRepository.existsByEmail(TestData.EMAIL))
+                    .thenReturn(false);
 
-        User user = new User();
-        when(userRepository.save(any(User.class)))
-                .thenReturn(user);
+            when(passwordEncoder.encode(TestData.PASSWORD))
+                    .thenReturn("encodedPassword");
 
-        AuthAccessResponse response = authService.login(username, password);
-        Assertions.assertNull(response.getAccessToken());
-        Assertions.assertNull(response.getRefreshToken());
-    }
+            when(jwtUtil.generateAccessToken(any(), any()))
+                    .thenReturn(TestData.ACCESS_TOKEN);
 
-    @Test
-    void shouldRefreshTokenSuccessfully() {
-        String refreshToken = TestDataConstants.TEST_REFRESH_TOKEN;
+            when(jwtUtil.generateRefreshToken(any(), any()))
+                    .thenReturn(TestData.REFRESH_TOKEN);
 
-        User user = new User();
-        when(userRepository.save(any(User.class)))
-                .thenReturn(user);
+            AuthAccessResponse response =
+                    authService.register(request);
 
-        AuthAccessResponse response = authService.refresh(refreshToken);
-        assertEquals(TestDataConstants.TEST_ACCESS_TOKEN, response.getAccessToken());
-        assertEquals(TestDataConstants.TEST_REFRESH_TOKEN, response.getRefreshToken());
-    }
+            assertEquals(TestData.ACCESS_TOKEN,
+                    response.getAccessToken());
 
-    @Test
-    void shouldNotRefreshTokenWithInvalidToken() {
-        String refreshToken = TestDataConstants.TEST_INVALID_REFRESH_TOKEN;
-        AuthAccessResponse response = authService.refresh(refreshToken);
-        Assertions.assertNull(response.getAccessToken());
-        Assertions.assertNull(response.getRefreshToken());
-    }
+            assertEquals(TestData.REFRESH_TOKEN,
+                    response.getRefreshToken());
 
-    @Test
-    void shouldRegisterUserSuccessfully() {
-        String username = TestDataConstants.TEST_USERNAME;
-        String email = TestDataConstants.TEST_EMAIL;
-        String fullName = TestDataConstants.TEST_FULL_NAME;
-        String password = TestDataConstants.TEST_PASSWORD;
+            ArgumentCaptor<User> captor =
+                    ArgumentCaptor.forClass(User.class);
 
-        RegisterRequest request = new RegisterRequest(username, email, fullName, password);
-        when(userRepository.save(any(User.class)))
-                .thenReturn(new User());
+            verify(userRepository).save(captor.capture());
 
-        AuthAccessResponse response = authService.register(request);
-        assertEquals(TestDataConstants.TEST_ACCESS_TOKEN, response.getAccessToken());
-        assertEquals(TestDataConstants.TEST_REFRESH_TOKEN, response.getRefreshToken());
-    }
+            User saved = captor.getValue();
 
-    @Test
-    void shouldThrowDuplicateResourceExceptionWithUsername() {
-        String username = TestDataConstants.TEST_USERNAME;
-        String email = TestDataConstants.TEST_EMAIL_TWO;
-        String fullName = TestDataConstants.TEST_FULL_NAME;
-        String password = TestDataConstants.TEST_PASSWORD;
+            assertEquals(TestData.USERNAME, saved.getUsername());
+            assertEquals(TestData.EMAIL, saved.getEmail());
+            assertEquals(TestData.FULL_NAME, saved.getFullName());
+            assertEquals("encodedPassword", saved.getPassword());
+            assertEquals(User.Role.USER, saved.getRole());
+        }
 
-        RegisterRequest request = new RegisterRequest(username, email, fullName, password);
-        when(userRepository.save(any(User.class)))
-                .thenThrow(new DuplicateResourceException("Username already exists"));
+        @Test
+        @DisplayName("Should reject duplicate username")
+        void shouldRejectDuplicateUsername() {
 
-        assertThrows(DuplicateResourceException.class, () -> authService.register(request));
-    }
+            when(userRepository.existsByUsername(TestData.USERNAME))
+                    .thenReturn(true);
 
-    @Test
-    void shouldThrowDuplicateResourceExceptionWithEmail() {
-        String username = TestDataConstants.TEST_USERNAME_TWO;
-        String email = TestDataConstants.TEST_EMAIL;
-        String fullName = TestDataConstants.TEST_FULL_NAME;
-        String password = TestDataConstants.TEST_PASSWORD;
+            RegisterRequest request =
+                    new RegisterRequest(
+                            TestData.USERNAME,
+                            TestData.EMAIL,
+                            TestData.FULL_NAME,
+                            TestData.PASSWORD);
 
-        RegisterRequest request = new RegisterRequest(username, email, fullName, password);
-        when(userRepository.save(any(User.class)))
-                .thenThrow(new DuplicateResourceException("Email already exists"));
+            assertThrows(
+                    DuplicateUsernameException.class,
+                    () -> authService.register(request));
+        }
 
-        assertThrows(DuplicateResourceException.class, () -> authService.register(request));
+        @Test
+        @DisplayName("Should reject duplicate email")
+        void shouldRejectDuplicateEmail() {
+
+            when(userRepository.existsByUsername(TestData.USERNAME))
+                    .thenReturn(false);
+
+            when(userRepository.existsByEmail(TestData.EMAIL))
+                    .thenReturn(true);
+
+            RegisterRequest request =
+                    new RegisterRequest(
+                            TestData.USERNAME,
+                            TestData.EMAIL,
+                            TestData.FULL_NAME,
+                            TestData.PASSWORD);
+
+            assertThrows(
+                    DuplicateEmailException.class,
+                    () -> authService.register(request));
+        }
     }
 }

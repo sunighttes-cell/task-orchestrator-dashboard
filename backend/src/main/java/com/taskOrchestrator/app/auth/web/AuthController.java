@@ -1,5 +1,6 @@
 package com.taskOrchestrator.app.auth.web;
 import com.taskOrchestrator.app.auth.application.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -31,7 +32,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public AuthAccessResponse register(@RequestBody RegisterRequest request) {
+    public AuthAccessResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 

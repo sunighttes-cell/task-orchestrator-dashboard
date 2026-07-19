@@ -5,7 +5,8 @@ import com.taskOrchestrator.app.auth.domain.UserRepository;
 import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
 import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
 import com.taskOrchestrator.app.auth.web.RegisterRequest;
-import com.taskOrchestrator.app.common.exception.DuplicateResourceException;
+import com.taskOrchestrator.app.common.exception.DuplicateEmailException;
+import com.taskOrchestrator.app.common.exception.DuplicateUsernameException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
@@ -76,10 +77,10 @@ public class AuthService {
 
     public AuthAccessResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.username())) {
-            throw new DuplicateResourceException("Username already exists");}
+            throw new DuplicateUsernameException("Username already exists");}
 
         if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateResourceException("Email already exists");}
+            throw new DuplicateEmailException("Email already exists");}
 
         User user = User.builder()
                 .username(request.username())

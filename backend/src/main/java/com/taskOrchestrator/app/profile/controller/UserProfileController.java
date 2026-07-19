@@ -17,9 +17,8 @@ public class UserProfileController {
     private final UserProfileService userProfileService;
 
     @GetMapping("/profile")
-    public UserProfileResponse profile() {
-        System.out.println("returning user profile for " + userProfileService.profile());
-        return userProfileService.profile();
+    public UserProfileResponse getProfile() {
+        return userProfileService.getProfile();
     }
 
     @PutMapping("/profile")

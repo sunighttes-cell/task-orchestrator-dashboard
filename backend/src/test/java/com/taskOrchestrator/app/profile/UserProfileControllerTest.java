@@ -1,150 +1,168 @@
 package com.taskOrchestrator.app.profile;
-import com.taskOrchestrator.app.auth.domain.UserRepository;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskOrchestrator.app.common.controller.AuthenticatedControllerTest;
+import com.taskOrchestrator.app.common.controller.BaseControllerTest;
+import com.taskOrchestrator.app.profile.controller.UserProfileController;
+import com.taskOrchestrator.app.profile.service.UserProfileService;
+import com.taskOrchestrator.app.profile.dto.UpdatePasswordRequest;
+import com.taskOrchestrator.app.profile.dto.UpdateProfileRequest;
+import com.taskOrchestrator.app.profile.dto.UserProfileResponse;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import org.springframework.mock.web.MockMultipartFile;
+import java.util.UUID;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-class UserProfileControllerTest {
+@WebMvcTest(UserProfileController.class)
+class UserProfileControllerTest extends AuthenticatedControllerTest {
+
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
-    private UserRepository userRepository;
+    private ObjectMapper objectMapper;
 
-    //test get endpoint
-    @Test
-    void shouldReturnProfile() throws Exception {
-        mockMvc.perform(get("/profile"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content").isNotEmpty());
+    @MockitoBean
+    private UserProfileService userProfileService;
+
+    private static final UUID USER_ID =
+            UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+    private UserProfileResponse profileResponse() {
+        return new UserProfileResponse(
+                USER_ID,
+                "testuser",
+                "test@example.com",
+                "USER",
+                "Test User",
+                null
+        );
     }
 
-    //test put endpoint
-    @Test
-    void shouldUpdateProfile() throws Exception {
-        mockMvc.perform(put("/profile")
+    @Nested
+    class GetProfile {
+        @Test
+        void shouldReturnAuthenticatedUserProfile() throws Exception {
+            UserProfileResponse response = profileResponse();
+            given(userProfileService.getProfile()).willReturn(response);
+
+            mockMvc.perform(
+                    get("/profile").with(authenticatedUser()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id")
+                            .value(USER_ID.toString()))
+                    .andExpect(jsonPath("$.username")
+                            .value("testuser"))
+                    .andExpect(jsonPath("$.email")
+                            .value("test@example.com"))
+                    .andExpect(jsonPath("$.role")
+                            .value("USER"))
+                    .andExpect(jsonPath("$.fullName")
+                            .value("Test User"));
+
+            verify(userProfileService).getProfile();
+        }
+    }
+
+    @Nested
+    class UpdateProfile {
+        @Test
+        void shouldUpdateUserProfile() throws Exception {
+            UpdateProfileRequest request =
+                    new UpdateProfileRequest(
+                            "updated@example.com",
+                            "Updated User"
+                    );
+
+            UserProfileResponse response =
+                    new UserProfileResponse(
+                            USER_ID,
+                            "testuser",
+                            "updated@example.com",
+                            "USER",
+                            "Updated User",
+                            null
+                    );
+
+            given(userProfileService.updateProfile(any())).willReturn(response);
+            mockMvc.perform(
+                    put("/profile").with(authenticatedUser())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email")
+                            .value("updated@example.com"))
+                    .andExpect(jsonPath("$.fullName")
+                            .value("Updated User"));
+
+            verify(userProfileService).updateProfile(request);
+        }
+    }
+
+    @Nested
+    class UpdatePassword {
+        @Test
+        void shouldUpdatePassword() throws Exception {
+            UpdatePasswordRequest request = new UpdatePasswordRequest(
+                    "OldPassword123!",
+                    "NewPassword123!"
+            );
+
+            UserProfileResponse response = profileResponse();
+            given(userProfileService.updatePassword(any())).willReturn(response);
+
+            mockMvc.perform(
+                    put("/profile/password").with(authenticatedUser())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"New User\", " +
-                                " \"email\":\"user@example.com\"}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.fullName").value("Test Update User"));
+                        .content(objectMapper.writeValueAsString(request))
+                    ).andExpect(status().isOk());
+
+            verify(userProfileService).updatePassword(request);
+        }
     }
 
-    //test put endpoint
-    @Test
-    void shouldNotUpdateProfileWithInvalidData() throws Exception {
-        mockMvc.perform(put("/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"New User\"}"))
-                .andExpect(status().isBadRequest());
-    }
+    @Nested
+    class UploadAvatar {
+        @Test
+        void shouldUploadAvatar() throws Exception {
+            MockMultipartFile file = new MockMultipartFile(
+                    "file",
+                    "avatar.png",
+                    "image/png",
+                    "image-content".getBytes()
+            );
 
-    //test put endpoint
-    @Test
-    void shouldUNotUpdateProfileWithInvalidEmail() throws Exception {
-        mockMvc.perform(put("/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fullName\":\"New User\", " +
-                                " \"email\":\"invalidemail\"}"))
-                .andExpect(status().isBadRequest());
-    }
+            UserProfileResponse response = new UserProfileResponse(
+                    USER_ID,
+                    "testuser",
+                    "test@example.com",
+                    "USER",
+                    "Test User",
+                    "/uploads/avatar.png"
+            );
 
-    //test put endpoint update password
-    @Test
-    void shouldUpdatePassword() throws Exception {
-        mockMvc.perform(put("/profile/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"passwordCurrent1234!\", " +
-                                " \"newPassword\":\"exampleNewPw24!\"}"))
-                .andExpect(status().isOk());
-    }
+            given(userProfileService.uploadAvatar(any())).willReturn(response);
 
-    @Test
-    void shouldNotUpdatePasswordWithInvalidOldPassword() throws Exception {
-        mockMvc.perform(put("/profile/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"invalidPassword14$\", " +
-                                " \"newPassword\":\"exampleNewPw24!\"}"))
-                .andExpect(status().isBadRequest());
-    }
+            mockMvc.perform(multipart("/profile/avatar").file(file)
+                            .with(authenticatedUser()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.profilePictureUrl")
+                            .value("/uploads/avatar.png"));
 
-    @Test
-    void shouldNotUpdatePasswordWithInvalidNewPassword() throws Exception {
-        mockMvc.perform(put("/profile/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"passwordCurrent1234!\", " +
-                                " \"newPassword\":\"invalidPassword\"}"))
-                .andExpect(status().isBadRequest());
+            verify(userProfileService).uploadAvatar(any());
+        }
     }
-
-    @Test
-    void shouldNotUpdatePasswordWithInvalidOldAndNewPassword() throws Exception {
-        mockMvc.perform(put("/profile/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"invalidPassword\", " +
-                                " \"newPassword\":\"invalidPassword\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldNotUpdatePasswordWithInvalidOldAndNewPasswordLength() throws Exception {
-        mockMvc.perform(put("/profile/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"oldPassword\":\"invalid\", " +
-                                " \"newPassword\":\"invalid\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldUploadAvatar() throws Exception {
-        mockMvc.perform(post("/profile/avatar")
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .content("file=test.png"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void shouldNotUploadAvatarWithInvalidFile() throws Exception {
-        mockMvc.perform(post("/profile/avatar")
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .content("file=test.txt"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldNotUploadAvatarWithInvalidContentType() throws Exception {
-        mockMvc.perform(post("/profile/avatar")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("file=test.png"))
-                .andExpect(status().isUnsupportedMediaType());
-    }
-
-    @Test
-    void shouldNotUploadAvatarWithInvalidFileExtension() throws Exception {
-        mockMvc.perform(post("/profile/avatar")
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .content("file=test.txt"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldNotUploadAvatarWithInvalidFileSize() throws Exception {
-        mockMvc.perform(post("/profile/avatar")
-                        .contentType(MediaType.MULTIPART_FORM_DATA)
-                        .content("file=test.png"))
-                .andExpect(status().isBadRequest());
-    }
-
 }

@@ -99,4 +99,23 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateEmail(
+            DuplicateEmailException exception) {
+        Map<String, Object> response = baseResponse("Email already exists", "CONFLICT_EMAIL");
+        //log the real exception
+        //exception.printStackTrace();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(DuplicateUsernameException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateUsername(
+            DuplicateUsernameException exception
+    ) {
+        Map<String, Object> response = baseResponse("Username already exists", "CONFLICT_USERNAME");
+        //log the real exception
+        //exception.printStackTrace();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
 }

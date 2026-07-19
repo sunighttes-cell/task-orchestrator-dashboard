@@ -39,7 +39,7 @@ public class UserProfileService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
-    public UserProfileResponse profile() {
+    public UserProfileResponse getProfile() {
         CurrentUser current = currentUserProvider.getCurrentUser();
         User user = getUser(current.username());
         return UserProfileResponse.fromUser(user);
