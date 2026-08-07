@@ -7,8 +7,12 @@ export const authClient = axios.create({
 });
 
 export async function refreshAccessToken(
-  refreshToken: string
+  refreshToken: string | null
 ): Promise<string> {
+  if (!refreshToken) {
+    throw new Error("Missing refresh token");
+  }
+
   const response = await authClient.post("/auth/refresh", {
     refreshToken,
   });

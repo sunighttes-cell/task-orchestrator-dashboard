@@ -8,7 +8,7 @@ export function useJobSummary() {
   const query = useQuery<StatusSummaryResponse[], Error>({
     queryKey: queryKeys.statusSummary,
     queryFn: () => getStatusSummary(),
-    refetchInterval: 900000, // Polling every 10 seconds
+    // refetchInterval: 900000, // Polling every 10 seconds
   });
 
   return query;

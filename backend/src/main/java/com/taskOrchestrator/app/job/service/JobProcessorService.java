@@ -1,4 +1,6 @@
 package com.taskOrchestrator.app.job.service;
+
+import com.taskOrchestrator.app.job.events.JobStatusChangedEvent;
 import com.taskOrchestrator.app.job.model.Execution;
 import com.taskOrchestrator.app.job.model.Job;
 import com.taskOrchestrator.app.job.model.JobStatus;
@@ -7,131 +9,153 @@ import com.taskOrchestrator.app.job.repository.JobRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-//Simulate orchestration: processes jobs and orchestrates execution.
-//separates orchestration from REST API logic
-//controllers should orchestrate requests, services orchestrate business logic
+/**Simulate orchestration: processes jobs and orchestrates execution.separates orchestration from
+ * REST API logic, controllers orchestrate requests, services orchestrate business logic */
+
 @Service
 @Slf4j
 public class JobProcessorService {
-    private static final Duration STUCK_JOB_THRESHOLD = Duration.ofSeconds(60);
 
+    private static final Duration STUCK_JOB_THRESHOLD = Duration.ofSeconds(60);
     private final JobRepository jobRepository;
     private final ExecutionRepository executionRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final JobProcessorService self;
 
     public JobProcessorService(
             JobRepository jobRepository,
             ExecutionRepository executionRepository,
+            ApplicationEventPublisher applicationEventPublisher,
             @Lazy @Autowired JobProcessorService self
     ) {
         this.jobRepository = jobRepository;
         this.executionRepository = executionRepository;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.self = self;
     }
 
-    //polling method: every 5secs - poll db, find queued jobs, process them
+    /***--------------- JOB EXECUTION--------------***/
     @Transactional
     public void processJob(Long jobId) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow();
-
+        Job job = jobRepository.findById(jobId).orElseThrow();
         if (job.getStatus() != JobStatus.RUNNING) {
-            log.warn("Skipping job {} — not RUNNING", jobId);
+            log.warn("Skipping job {} — current status is {}", jobId, job.getStatus());
             return;
         }
 
         LocalDateTime startedAt = job.getStartedAt();
-
         try {
             log.info("Processing job id={}", jobId);
-
+            // Simulate work
             Thread.sleep(2000);
-
             boolean success = Math.random() > 0.3;
-
             if (success) {
-                job.setStatus(JobStatus.COMPLETED);
+                completeJob(job);
             } else {
-                job.setStatus(JobStatus.FAILED);
-                job.setFailureReason("Random failure");
+                failJob(job, "Random failure");
             }
-
-        } catch (InterruptedException e) {
+        } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            job.setStatus(JobStatus.FAILED);
-            job.setFailureReason("Interrupted");
-        } catch (Exception e) {
-            job.setStatus(JobStatus.FAILED);
-            job.setFailureReason(e.getMessage());
+            failJob(job, "Job execution interrupted");
+
+        } catch (Exception exception) {
+            log.error("Unexpected error processing job {}", jobId, exception);
+            failJob(job, exception.getMessage());
         }
 
         LocalDateTime completedAt = LocalDateTime.now();
         job.setCompletedAt(completedAt);
 
-        jobRepository.save(job);
+        Job savedJob = jobRepository.save(job);
+        recordExecution(savedJob, startedAt, completedAt);
+        publishJobStatusChanged(savedJob);
 
-        recordExecution(job, startedAt, completedAt);
-
-        log.info("Finished job id={} status={}", jobId, job.getStatus());
+        log.info("Finished job id={} status={}", savedJob.getId(), savedJob.getStatus());
     }
 
-    private void recordExecution(Job job, LocalDateTime startedAt, LocalDateTime completedAt) {
+    /***---------------JOB STATUS TRANSITIONS--------------***/
+    private void completeJob(Job job) {
+        job.setStatus(JobStatus.COMPLETED);
+        job.setFailureReason(null);
+        log.info("Job {} completed successfully", job.getId());
+    }
+
+    private void failJob(Job job, String failureReason) {
+        job.setStatus(JobStatus.FAILED);
+        job.setFailureReason(failureReason);
+        log.warn("Job {} failed: {}", job.getId(), failureReason);
+    }
+
+    /***---------------EXECUTION HISTORY--------------***/
+    private void recordExecution(
+            Job job,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt
+    ) {
         long durationMs = Duration.between(startedAt, completedAt).toMillis();
-        Execution execution = Execution.builder()
-                .job(job)
-                .status(job.getStatus())
-                .durationMs(durationMs)
-                .build();
+        Execution execution =
+                Execution.builder()
+                        .job(job)
+                        .status(job.getStatus())
+                        .durationMs(durationMs)
+                        .build();
         executionRepository.save(execution);
     }
 
+    /***---------------STUCK JOB RECOVERY--------------***/
     @Scheduled(fixedDelay = 20000)
     @Transactional
     public void recoverStuckJobsPeriodically() {
         LocalDateTime cutoff = LocalDateTime.now().minus(STUCK_JOB_THRESHOLD);
-        List<Job> running = jobRepository.findByStatus(JobStatus.RUNNING);
+        List<Job> runningJobs = jobRepository.findByStatus(JobStatus.RUNNING);
+        List<Job> stuckJobs = new ArrayList<>();
 
-        List<Job> stuck = new ArrayList<>();
-        for (Job job : running) {
+        for (Job job : runningJobs) {
             LocalDateTime startedAt = job.getStartedAt();
-            // only recover jobs that are actually stuck — not ones still being processed
             if (startedAt == null || startedAt.isBefore(cutoff)) {
                 job.setStatus(JobStatus.QUEUED);
                 job.setStartedAt(null);
-                stuck.add(job);
+                stuckJobs.add(job);
             }
         }
 
-        if (stuck.isEmpty()) {
-            return;
+        if (stuckJobs.isEmpty()) { return; }
+        List<Job> savedJobs = jobRepository.saveAll(stuckJobs);
+
+        for (Job job : savedJobs) {
+            log.warn("Recovered stuck job {} back to QUEUED", job.getId());
+            publishJobStatusChanged(job);
         }
-        jobRepository.saveAll(stuck);
-        log.warn("{} stuck job(s) (running > {}s) recovered to QUEUED", stuck.size(), STUCK_JOB_THRESHOLD.getSeconds());
+
+        log.warn("{} stuck job(s) recovered to QUEUED", stuckJobs.size());
     }
 
+    /***---------------ASYNC EXECUTION--------------***/
     @Async
     public void processJobAsync(Long jobId) {
-        processJob(jobId);
+        self.processJob(jobId);
     }
 
+    /***---------------CLAIM QUEUED JOBS--------------***/
     @Transactional
-    public List<Job> claimNextJobs(int limit) {List<Job> jobs = jobRepository.findNextJobsForUpdate(
-                JobStatus.QUEUED,
-                PageRequest.of(0, limit)
-        );
+    public List<Job> claimNextJobs(int limit) {
+        List<Job> jobs = jobRepository.findNextJobsForUpdate(
+                        JobStatus.QUEUED,
+                        PageRequest.of(0, limit));
 
-        if (jobs.isEmpty()) return jobs;
-
+        if (jobs.isEmpty()) { return jobs; }
         LocalDateTime now = LocalDateTime.now();
 
         for (Job job : jobs) {
@@ -139,18 +163,29 @@ public class JobProcessorService {
             job.setStartedAt(now);
         }
 
-        return jobRepository.saveAll(jobs);
+        List<Job> savedJobs = jobRepository.saveAll(jobs);
+        for (Job job : savedJobs) {
+            publishJobStatusChanged(job);
+        }
+
+        return savedJobs;
     }
 
+
+    /***--------------- POLLING--------------***/
     @Scheduled(fixedDelay = 5000)
     public void processQueuedJobs() {
         List<Job> jobs = self.claimNextJobs(5);
-
         for (Job job : jobs) {
-            // route through the proxy so @Async actually applies (self-invocation skips AOP)
+            // Route through Spring proxy so @Async applies.
             self.processJobAsync(job.getId());
         }
     }
+
+    /***--------------- SSE EVENT PUBLISHING--------------***/
+    private void publishJobStatusChanged(Job job) {
+        applicationEventPublisher.publishEvent(
+                new JobStatusChangedEvent(job)
+        );
+    }
 }
-
-

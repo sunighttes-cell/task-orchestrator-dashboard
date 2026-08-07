@@ -21,7 +21,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const { data: profile, refetch } = useProfile();
     console.log("Current profile in AvatarUpload:", profile);
-    const baseUrl = import.meta.env.VITE_API_BASE_URL + "/"
+    const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const avatarSrc = profile?.profilePictureUrl && !profile.profilePictureUrl.startsWith('http') ? `${baseUrl}${profile.profilePictureUrl}` : profile?.profilePictureUrl;
     console.log("Avatar src in AvatarUpload:", avatarSrc);
 

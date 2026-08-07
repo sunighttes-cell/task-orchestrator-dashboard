@@ -1,7 +1,10 @@
 package com.taskOrchestrator.app.auth.infrastructure.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskOrchestrator.app.auth.application.CurrentUser;
 import com.taskOrchestrator.app.auth.domain.User;
+import com.taskOrchestrator.app.auth.domain.UserRepository;
+import com.taskOrchestrator.app.common.exception.UserNotFoundException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -14,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -27,45 +31,60 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
-    public JwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
+    public JwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
         this.objectMapper = objectMapper;
+        this.userRepository = userRepository;
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String requestPath = request.getRequestURI();
+        if (requestPath.endsWith("/auth/login")
+                || requestPath.endsWith("/auth/register")
+                || requestPath.endsWith("/auth/refresh")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            SecurityContextHolder.clearContext();
+            writeUnauthorized(response, "Authentication required", "UNAUTHORIZED");
+            return;
+        }
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-
-            try {
-                if (jwtUtil.isValidAccessToken(token)) {
-                    String username = jwtUtil.extractUsername(token);
-                    User.Role role = jwtUtil.extractRole(token);
-                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            username, null, authorities
-                    );
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                } else {
-                    writeUnauthorized(response, "Invalid token", "INVALID_TOKEN");
-                    return;
-                }
-            } catch (ExpiredJwtException ex) {
-                writeUnauthorized(response, "Token has expired", "TOKEN_EXPIRED");
-                return;
-            } catch (JwtException | IllegalArgumentException ex) {
+        String token = authHeader.substring(7);
+        try {
+            String username = jwtUtil.extractUsername(token);
+            User.Role role = jwtUtil.extractRole(token);
+            if (!jwtUtil.isValidAccessToken(token)) {
+                SecurityContextHolder.clearContext();
                 writeUnauthorized(response, "Invalid token", "INVALID_TOKEN");
                 return;
             }
+
+            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+            var auth = new UsernamePasswordAuthenticationToken(username, null, authorities);
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        } catch (JwtException | IllegalArgumentException ex) {
+            SecurityContextHolder.clearContext();
+            writeUnauthorized(response, "Invalid token", "INVALID_TOKEN");
+            return;
         }
+
         filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+
+        return path.startsWith("/auth/") || path.startsWith("/uploads/");
     }
 
     private void writeUnauthorized(HttpServletResponse response, String message, String code) throws IOException {

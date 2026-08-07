@@ -41,14 +41,18 @@ public class LocalFileStorageService implements FileStorageService {
             throw new IllegalArgumentException("File size exceeds maximum size");
         }
 
-        String newFileName = UUID.randomUUID().toString() + ".png";
-        Path destinationFile = uploadPath.resolve(newFileName);
+        String newFileName = UUID.randomUUID() + ".png";
+        Path destination = uploadPath.resolve(newFileName);
         //copy file to destination and replace existing file if exists
-        Files.copy(file.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
-
+        Files.copy(
+                file.getInputStream(),
+                destination,
+                StandardCopyOption.REPLACE_EXISTING
+        );
         System.out.println("File uploaded successfully" + uploadPath.resolve(newFileName));
-        System.out.println("New File Name" + destinationFile);
+        System.out.println("New File Name" + destination);
 
-        return destinationFile.toString();
+        //return destinationFile.toString();
+        return "/uploads/" + newFileName;
     }
 }

@@ -6,6 +6,7 @@ import { router } from "@/router";
 import { ThemeProvider } from "./providers/ThemeProvider";
 import "./index.css";
 import { AuthProvider } from "./auth/AuthContext";
+import { JobEventsProvider } from "@/providers/JobEventsProvider";
 
 
 const queryClient = new QueryClient();
@@ -15,7 +16,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <RouterProvider router={router} />
+            <JobEventsProvider>
+              <RouterProvider router={router} />
+            </JobEventsProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

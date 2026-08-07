@@ -41,7 +41,12 @@ apiClient.interceptors.response.use(
   async (err) => {
     const originalRequest = err.config;
     console.log("401 interceptors", err.response?.status, originalRequest._retry);
-    if ((err.response?.status === 401 || err.response?.status === 403) && !originalRequest._retry) {
+
+    if (err.response?.status === 403) {
+      return Promise.reject(err);
+    }
+
+    if (err.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         // queue request
         return new Promise((resolve, reject) => {
@@ -54,12 +59,17 @@ apiClient.interceptors.response.use(
           });
         });
       }
+
       originalRequest._retry = true;
       isRefreshing = true;
       const refreshToken = sessionStorage.getItem("refreshToken");
       console.log("refreshToken", refreshToken);
 
       try {
+        if (!refreshToken) {
+          throw new Error("Missing refresh token");
+        }
+
         const newToken = await refreshAccessToken(refreshToken);
         console.log("newToken in try", newToken);
         console.log("originalRequest", originalRequest);
@@ -70,7 +80,7 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        console.log("refreshError in catch", refreshError)
+        console.log("refreshError in catch", refreshError);
 
         processQueue(refreshError, null);
 

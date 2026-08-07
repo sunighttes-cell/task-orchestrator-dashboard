@@ -1,4 +1,5 @@
 package com.taskOrchestrator.app.config;
+import com.taskOrchestrator.app.auth.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
@@ -33,6 +34,7 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,37 +42,94 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper) {
-        return new JwtAuthFilter(jwtUtil, objectMapper);
+    public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, UserRepository userRepository) {
+        return new JwtAuthFilter(jwtUtil, objectMapper, userRepository);
     }
 
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+//        return http
+//            .csrf(AbstractHttpConfigurer::disable)
+//            .cors(Customizer.withDefaults())
+//            .sessionManagement(session ->
+//                    session.sessionCreationPolicy(
+//                            SessionCreationPolicy.STATELESS
+//                    )
+//            )
+//            .authorizeHttpRequests(auth -> auth
+//                    .requestMatchers(
+//                            HttpMethod.OPTIONS,
+//                            "/**"
+//                    ).permitAll()
+//                    .requestMatchers(
+//                            "/auth/login",
+//                            "/auth/register",
+//                            "/auth/refresh"
+//                    ).permitAll()
+//                    .requestMatchers("/realtime/**").authenticated()
+//                    .anyRequest().authenticated()
+//            )
+//            .addFilterBefore(
+//                    jwtAuthFilter,
+//                    UsernamePasswordAuthenticationFilter.class
+//            )
+//            .build();
+//    }
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthFilter jwtAuthFilter
+    ) throws Exception {
+
         return http
-            .csrf(AbstractHttpConfigurer::disable)
-            .cors(Customizer.withDefaults())
-            .sessionManagement(session ->
-                    session.sessionCreationPolicy(
-                            SessionCreationPolicy.STATELESS
-                    )
-            )
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(
-                            HttpMethod.OPTIONS,
-                            "/**"
-                    ).permitAll()
-                    .requestMatchers(
-                            "/auth/login",
-                            "/auth/register",
-                            "/auth/refresh"
-                    ).permitAll()
-                    .anyRequest().authenticated()
-            )
-            .addFilterBefore(
-                    jwtAuthFilter,
-                    UsernamePasswordAuthenticationFilter.class
-            )
-            .build();
+                .csrf(AbstractHttpConfigurer::disable)
+
+                .cors(Customizer.withDefaults())
+
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
+
+                .exceptionHandling(exceptions ->
+                        exceptions
+                                .authenticationEntryPoint(
+                                        unauthorizedEntryPoint()
+                                )
+                                .accessDeniedHandler(
+                                        forbiddenAccessDeniedHandler()
+                                )
+                )
+
+                .authorizeHttpRequests(auth ->
+                        auth
+                                .requestMatchers(
+                                        HttpMethod.OPTIONS,
+                                        "/**"
+                                )
+                                .permitAll()
+
+                                .requestMatchers(
+                                        "/auth/login",
+                                        "/auth/register",
+                                        "/auth/refresh"
+                                )
+                                .permitAll()
+                                .requestMatchers("/uploads/**").permitAll()
+                                .requestMatchers("/realtime/**")
+                                .authenticated()
+                                .anyRequest()
+                                .authenticated()
+                )
+
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
+                .build();
     }
 
     // Returns 401 (not Spring Security's default 403) when a protected endpoint is hit without auth.

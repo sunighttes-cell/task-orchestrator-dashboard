@@ -118,4 +118,11 @@ public class GlobalExceptionHandler {
         //exception.printStackTrace();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleUserNotFound(UserNotFoundException ex) {
+        Map<String, Object> response = baseResponse(ex.getMessage(), "USER_NOT_FOUND");
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
 }

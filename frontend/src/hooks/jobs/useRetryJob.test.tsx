@@ -1,15 +1,39 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { createWrapper } from "@/test/utils/react-query";
+import { act, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
 import { useRetryJob } from "./useRetryJob";
+import * as jobsApi from "@/api/jobsApi";
+
+vi.mock("@/api/jobsApi", () => ({
+  retryJob: vi.fn(),
+}));
 
 describe("useRetryJob", () => {
-  it("retries a job", async () => {
-    const { result } = renderHook(() => useRetryJob(), {
-      wrapper: createWrapper(),
+  it("invalidates jobs and dashboard queries after successful retry", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     });
 
-    result.current.mutate(1);
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    vi.mocked(jobsApi.retryJob).mockResolvedValue({ id: 1, name: "Job 1" });
+
+    const { result } = renderHook(() => useRetryJob(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    expect(jobsApi.retryJob).toHaveBeenCalled();
+    expect(jobsApi.retryJob.mock.calls[0][0]).toBe(1);
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["jobs"], exact: false });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["status-summary"], exact: false });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["dashboard-metrics"], exact: false });
   });
 });

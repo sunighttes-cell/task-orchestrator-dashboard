@@ -22,9 +22,7 @@ export async function updatePassword(passwordData: UpdatePasswordRequest): Promi
   return res.data;
 }
 
-export async function uploadAvatar(
-    file: File
-): Promise<UserProfile> {
+export async function uploadAvatar(file: File): Promise<UserProfile> {
     console.log("Uploading profile picture:", file);
     const formData = new FormData();
     formData.append("file", file);

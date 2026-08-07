@@ -11,6 +11,9 @@ import com.taskOrchestrator.app.job.model.Job;
 import com.taskOrchestrator.app.job.model.JobStatus;
 import com.taskOrchestrator.app.job.repository.JobRepository;
 import com.taskOrchestrator.app.job.repository.specification.JobSpecification;
+import com.taskOrchestrator.app.realtime.model.EventType;
+import com.taskOrchestrator.app.realtime.model.JobEvent;
+import com.taskOrchestrator.app.realtime.service.JobEventPublisher;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static com.taskOrchestrator.app.realtime.model.EventType.JOB_CREATED;
+
 @Service
 //@RequiredArgsConstructor
 public class JobService {
@@ -27,11 +32,14 @@ public class JobService {
     private final JobRepository jobRepository;
     private final CurrentUserProvider currentUserProvider;
     private final UserRepository userRepository;
+    private final JobEventPublisher jobEventPublisher;
 
-    public JobService(JobRepository jobRepository, CurrentUserProvider currentUserProvider, UserRepository userRepository) {
+    public JobService(JobRepository jobRepository, CurrentUserProvider currentUserProvider,
+                      UserRepository userRepository, JobEventPublisher jobEventPublisher) {
         this.jobRepository = jobRepository;
         this.currentUserProvider = currentUserProvider;
         this.userRepository = userRepository;
+        this.jobEventPublisher = jobEventPublisher;
     }
 
 //    public List<Job> getJobsByUsername() {
@@ -63,8 +71,13 @@ public class JobService {
                 .failureReason(null)
                 .user(user)
                 .build();
+        //save
         Job savedJob = jobRepository.save(job);
-        System.out.println("Job user: " + savedJob.getUser().getUsername());
+        //publish
+        jobEventPublisher.publish(
+                JobEvent.fromJob(savedJob, EventType.JOB_CREATED)
+        );
+
         return JobResponse.fromJob(savedJob);
     }
 
@@ -117,6 +130,7 @@ public class JobService {
         job.setUpdatedAt(LocalDateTime.now());
 
         Job saved = jobRepository.save(job);
+        jobEventPublisher.publish(JobEvent.fromJob(saved, EventType.JOB_RETRIED));
 
         return JobResponse.fromJob(saved);
     }

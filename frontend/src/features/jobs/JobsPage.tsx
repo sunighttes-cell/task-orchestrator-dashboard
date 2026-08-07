@@ -67,7 +67,7 @@ export default function JobsPage() {
 
   return (
       <div className="space-y-6 p-6">
-        <PageHeader title="Jobs" description="Browse and manage orchestration jobs" />
+        <PageHeader title="Jobs" description="Browse and manage orchestration jobs"/>
         {/* Create Jobs */}
         <div><CreateJobForm/></div>
         {/* Search Jobs*/}

@@ -6,6 +6,6 @@ export function useDashboardMetrics() {
     queryKey: ["dashboard-metrics"],
     queryFn: getMetrics,
     // refetchInterval: 10000, 
-    refetchInterval: 900000,
+    // refetchInterval: 900000,
   })
 }

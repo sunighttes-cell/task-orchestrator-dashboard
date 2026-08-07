@@ -10,11 +10,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class StorageConfig implements WebMvcConfigurer {
     //ResourceHandlerRegistry maps URL path (HTTP) to Physical location (File System)
+    private final StorageProperties storageProperties;
+
+    public StorageConfig(StorageProperties storageProperties) {
+        this.storageProperties = storageProperties;
+    }
 
     //Spring Checks Any controller? No Any resource handler? Yes -> Look in uploads/ -> Find and Return image
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:uploads/");
+                .addResourceLocations("file:uploads/avatars/");
     }
 }

@@ -8,6 +8,8 @@ export function useRetryJob() {
     mutationFn: retryJob,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["jobs"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["status-summary"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"], exact: false });
     },
   });
 }

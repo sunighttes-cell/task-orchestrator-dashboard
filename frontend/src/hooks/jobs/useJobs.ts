@@ -8,7 +8,7 @@ export function useJobs(filters: {}) {
     queryFn: () => getJobs(filters),
     placeholderData: keepPreviousData, // smooth pagination
     // refetchInterval: 5000,
-    refetchInterval: 900000,
-    staleTime: 5 * 900000,
+    //refetchInterval: 900000,
+    //staleTime: 5 * 900000,
   });
 }
