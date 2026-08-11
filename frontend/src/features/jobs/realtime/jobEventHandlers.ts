@@ -3,52 +3,61 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { JobEvent } from "@/types/jobEvents";
 import { queryKeys } from "@/api/queryKeys";
-import { getMetrics } from "@/api/dashboardApi";
-import { getStatusSummary } from "@/api/jobsApi";
-import { getJobs } from "@/api/jobsApi";
 
-export function handleJobEvent(
+export async function handleJobEvent(
   event: JobEvent,
   queryClient: QueryClient,
 ) {
-  switch (event.eventType) {
-    case "JOB_CREATED":
-      invalidateJobQueries(queryClient);
-      break;
-    case "JOB_STARTED":
-      invalidateJobQueries(queryClient);
-      break;
-    case "JOB_COMPLETED":
-      invalidateJobQueries(queryClient);
-      break;
-    case "JOB_FAILED":
-      invalidateJobQueries(queryClient);
-      break;
-    case "JOB_RETRIED":
-      invalidateJobQueries(queryClient);
-      break;
-    default:
-      invalidateJobQueries(queryClient);
+  console.log("Handling SSE event:", event.eventType, "jobId:", event.jobId, "status:", event.jobStatus);
+  try{
+    await invalidateJobQueries(queryClient);
+  } catch (error) {
+    console.error("Error invalidating job queries:", error);
   }
+
 }
 
 export async function invalidateJobQueries(
   queryClient: QueryClient,
 ) {
-  console.log("Refetching queries...");
-  console.log("isFetching:", queryClient.isFetching());
-  await Promise.all([
-    queryClient.fetchQuery({
-      queryKey: queryKeys.jobs({}),
-      queryFn: () => getJobs({}),
+  console.log("========== SSE REFRESH START ==========");
+
+  const results = await Promise.all([
+    queryClient.refetchQueries({
+      queryKey: ["jobs"],
+      type: "active",
     }),
-    queryClient.fetchQuery({
-      queryKey: queryKeys.statusSummary,
-      queryFn: getStatusSummary,
+
+    queryClient.refetchQueries({
+      queryKey: ["status-summary"],
+      type: "active",
     }),
-    queryClient.fetchQuery({
-      queryKey: queryKeys.dashboardMetrics,
-      queryFn: getMetrics,
+
+    queryClient.refetchQueries({
+      queryKey: ["dashboard-metrics"],
+      type: "active",
     }),
-]);
+  ]);
+
+  console.log("========== SSE REFRESH COMPLETE ==========");
+
+  console.log("Jobs cache:",
+    queryClient.getQueriesData({
+      queryKey: ["jobs"],
+    })
+  );
+
+  console.log("Summary cache:",
+    queryClient.getQueryData(
+      queryKeys.statusSummary
+    )
+  );
+
+  console.log("Metrics cache:",
+    queryClient.getQueryData(
+      queryKeys.dashboardMetrics
+    )
+  );
+
+  console.log("Refetch results:", results);
 }

@@ -65,6 +65,10 @@ export default function JobsPage() {
     setSearchInput(filters.search ?? "");
   }, [filters.search]);
 
+  useEffect(() => {
+    console.log("Jobs query data changed", data);
+  }, [data]);
+
   return (
       <div className="space-y-6 p-6">
         <PageHeader title="Jobs" description="Browse and manage orchestration jobs"/>

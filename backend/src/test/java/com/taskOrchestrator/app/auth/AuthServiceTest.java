@@ -267,7 +267,6 @@ class AuthServiceTest {
         @Test
         @DisplayName("Should reject duplicate username")
         void shouldRejectDuplicateUsername() {
-
             when(userRepository.existsByUsername(TestData.USERNAME))
                     .thenReturn(true);
 
@@ -277,10 +276,7 @@ class AuthServiceTest {
                             TestData.EMAIL,
                             TestData.FULL_NAME,
                             TestData.PASSWORD);
-
-            assertThrows(
-                    DuplicateUsernameException.class,
-                    () -> authService.register(request));
+            assertThrows(DuplicateUsernameException.class, () -> authService.register(request));
         }
 
         @Test

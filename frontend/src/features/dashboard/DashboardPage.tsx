@@ -18,16 +18,22 @@ export default function DashboardPage() {
 
   console.log("Dashboard data:", {metrics, statusSummary, jobs});
   useEffect(() => {
-    console.log("Dashboard jobs changed", jobs);
-  }, [jobs]);
+    console.log("DASHBOARD SUMMARY RENDER DATA: ",
+      JSON.stringify(statusSummary)
+    );
+  }, [statusSummary]);
 
   useEffect(() => {
-      console.log("Metrics changed", metrics);
+    console.log("DASHBOARD METRICS RENDER DATA: ",
+      JSON.stringify(metrics)
+    );
   }, [metrics]);
 
   useEffect(() => {
-      console.log("Summary changed", statusSummary);
-  }, [statusSummary]);
+    console.log("DASHBOARD JOBS RENDER DATA:",
+      JSON.stringify(jobs)
+    );
+  }, [jobs]);
 
   return (
     <div className="space-y-6">

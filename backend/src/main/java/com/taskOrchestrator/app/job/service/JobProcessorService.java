@@ -1,6 +1,6 @@
 package com.taskOrchestrator.app.job.service;
 
-import com.taskOrchestrator.app.job.events.JobStatusChangedEvent;
+import com.taskOrchestrator.app.realtime.events.JobStatusChangedEvent;
 import com.taskOrchestrator.app.job.model.Execution;
 import com.taskOrchestrator.app.job.model.Job;
 import com.taskOrchestrator.app.job.model.JobStatus;

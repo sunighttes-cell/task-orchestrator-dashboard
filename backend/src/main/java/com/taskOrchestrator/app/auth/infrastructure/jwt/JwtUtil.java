@@ -14,7 +14,6 @@ import java.util.Date;
 public class JwtUtil {
 
     private final Key key;
-    private final long expiration;
     private final long accessExpiration;
     private final long refreshExpiration;
 
@@ -23,7 +22,6 @@ public class JwtUtil {
                    @Value("${jwt.refresh-expiration}") long refreshExpiration,
                    @Value("${jwt.expiration}") long expiration) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
-        this.expiration = expiration;
         this.accessExpiration = accessExpiration;
         this.refreshExpiration = refreshExpiration;
     }

@@ -23,12 +23,13 @@ export function JobEventsProvider({children,}: { children: React.ReactNode;}) {
   console.log("1. JobEventsProvider rendered", {hasToken: Boolean(accessToken)});
 
   const handleEvent = useCallback(
-    (event: JobEvent) => {
-      console.log("Job event received", event);
-      handleJobEvent(event, queryClient);
-    },
-    [queryClient],
-  );
+  async (event: JobEvent) => {
+    console.log("Job event received", event);
+
+    await handleJobEvent(event, queryClient);
+  },
+  [queryClient],
+);
 
   // const { status } = useJobEvents({ 
   //   accessToken, 
