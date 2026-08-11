@@ -1,6 +1,7 @@
 package com.taskOrchestrator.app.profile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskOrchestrator.app.auth.domain.UserRepository;
 import com.taskOrchestrator.app.common.controller.AuthenticatedControllerTest;
 import com.taskOrchestrator.app.common.controller.BaseControllerTest;
 import com.taskOrchestrator.app.profile.controller.UserProfileController;
@@ -37,6 +38,9 @@ class UserProfileControllerTest extends AuthenticatedControllerTest {
 
     @MockitoBean
     private UserProfileService userProfileService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private static final UUID USER_ID =
             UUID.fromString("11111111-1111-1111-1111-111111111111");
