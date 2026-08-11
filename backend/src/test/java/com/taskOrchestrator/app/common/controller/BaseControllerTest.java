@@ -11,7 +11,6 @@ import org.springframework.test.web.servlet.MockMvc;
 /**Base class for all controller tests.Responsibilities: Shared MockMvc, Shared ObjectMapper,
  * GlobalExceptionHandler, JSON helper methods. Controller tests should focus ONLY on:
  * request mapping, HTTP status, JSON serialization, JSON response, Business logic belongs in Service tests.*/
-
 @Import(GlobalExceptionHandler.class)
 public abstract class BaseControllerTest {
 

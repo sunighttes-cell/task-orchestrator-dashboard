@@ -1,6 +1,7 @@
 package com.taskOrchestrator.app.common.controller;
 
 import com.taskOrchestrator.app.auth.domain.User;
+import com.taskOrchestrator.app.auth.domain.UserRepository;
 import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
 import com.taskOrchestrator.app.config.SecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,15 +21,20 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import java.util.UUID;
 
 /**Base class for controller tests that require authentication. ControllerTests should extend this class.*/
-@WebMvcTest
 @Import(SecurityConfig.class)
 public abstract class AuthenticatedControllerTest extends BaseControllerTest {
     @MockitoBean
-    private JwtUtil jwtUtil;
+    protected JwtUtil jwtUtil;
+
+    @MockitoBean
+    protected UserRepository userRepository;
+
     protected static final String USERNAME = "testuser";
     protected static final String ADMIN = "admin";
+
     protected static final UUID USER_ID = UUID.fromString(
-            "11111111-1111-1111-1111-111111111111");
+            "11111111-1111-1111-1111-111111111111"
+    );
 
     protected String userToken() {
         return jwtUtil.generateAccessToken(
@@ -47,14 +53,13 @@ public abstract class AuthenticatedControllerTest extends BaseControllerTest {
     protected RequestPostProcessor authenticatedUser() {
         return authentication(
                 new UsernamePasswordAuthenticationToken(
-                        "testuser",
+                        USERNAME,
                         null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))
                 )
         );
     }
 
-    //Adds USER Authorization header
     protected MockHttpServletRequestBuilder authenticate(
             MockHttpServletRequestBuilder builder
     ) {
@@ -64,7 +69,6 @@ public abstract class AuthenticatedControllerTest extends BaseControllerTest {
         );
     }
 
-    //Adds ADMIN Authorization header
     protected MockHttpServletRequestBuilder authenticateAdmin(
             MockHttpServletRequestBuilder builder
     ) {

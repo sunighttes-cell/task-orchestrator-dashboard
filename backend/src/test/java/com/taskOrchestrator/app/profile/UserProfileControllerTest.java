@@ -39,8 +39,8 @@ class UserProfileControllerTest extends AuthenticatedControllerTest {
     @MockitoBean
     private UserProfileService userProfileService;
 
-    @MockitoBean
-    private UserRepository userRepository;
+//    @MockitoBean
+//    private UserRepository userRepository;
 
     private static final UUID USER_ID =
             UUID.fromString("11111111-1111-1111-1111-111111111111");
