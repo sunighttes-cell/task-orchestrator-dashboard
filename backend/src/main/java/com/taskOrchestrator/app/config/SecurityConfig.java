@@ -11,8 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,20 +19,32 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-@Configuration
-@EnableWebSecurity
+//@EnableWebSecurity
 //@EnableMethodSecurity(securedEnabled = true)
+@Configuration
+@EnableConfigurationProperties(StorageProperties.class)
 @RequiredArgsConstructor
-public class SecurityConfig {
+public class SecurityConfig implements WebMvcConfigurer {
 
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+    private final StorageProperties storageProperties;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(
+                        "file:" + storageProperties.getUploadDir() + "/"
+                );
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -45,36 +55,6 @@ public class SecurityConfig {
     public JwtAuthFilter jwtAuthFilter(JwtUtil jwtUtil, ObjectMapper objectMapper, UserRepository userRepository) {
         return new JwtAuthFilter(jwtUtil, objectMapper, userRepository);
     }
-
-//    @Bean
-//    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
-//        return http
-//            .csrf(AbstractHttpConfigurer::disable)
-//            .cors(Customizer.withDefaults())
-//            .sessionManagement(session ->
-//                    session.sessionCreationPolicy(
-//                            SessionCreationPolicy.STATELESS
-//                    )
-//            )
-//            .authorizeHttpRequests(auth -> auth
-//                    .requestMatchers(
-//                            HttpMethod.OPTIONS,
-//                            "/**"
-//                    ).permitAll()
-//                    .requestMatchers(
-//                            "/auth/login",
-//                            "/auth/register",
-//                            "/auth/refresh"
-//                    ).permitAll()
-//                    .requestMatchers("/realtime/**").authenticated()
-//                    .anyRequest().authenticated()
-//            )
-//            .addFilterBefore(
-//                    jwtAuthFilter,
-//                    UsernamePasswordAuthenticationFilter.class
-//            )
-//            .build();
-//    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
