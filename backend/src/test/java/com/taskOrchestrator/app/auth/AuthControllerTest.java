@@ -2,10 +2,11 @@ package com.taskOrchestrator.app.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskOrchestrator.app.auth.application.AuthService;
+import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtAuthFilter;
 import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
-import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
 import com.taskOrchestrator.app.auth.web.AuthController;
 import com.taskOrchestrator.app.auth.web.RegisterRequest;
+import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
 import com.taskOrchestrator.app.common.controller.BaseControllerTest;
 import com.taskOrchestrator.app.common.exception.DuplicateEmailException;
 import com.taskOrchestrator.app.common.exception.DuplicateUsernameException;
@@ -17,32 +18,44 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.test.web.servlet.MockMvc;
-import static org.mockito.ArgumentMatchers.*;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(AuthController.class)
-@Import(GlobalExceptionHandler.class)
+@WebMvcTest(controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import({GlobalExceptionHandler.class, AuthControllerTest.TestConfig.class})
 class AuthControllerTest extends BaseControllerTest {
-    @Autowired
-    private MockMvc mockMvc;
 
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        public JwtUtil jwtUtil() {
+            return mock(JwtUtil.class);
+        }
+
+        @Bean
+        public JwtAuthFilter jwtAuthFilter() {
+            return mock(JwtAuthFilter.class);
+        }
+    }
     @Autowired
     private ObjectMapper objectMapper;
 
     @MockitoBean
     private AuthService authService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
 
     @Nested
     class Login {
@@ -59,12 +72,14 @@ class AuthControllerTest extends BaseControllerTest {
 
             when(authService.login(
                     TestData.USERNAME,
-                    TestData.PASSWORD))
-                    .thenReturn(response);
+                    TestData.PASSWORD
+            )).thenReturn(response);
 
-            mockMvc.perform(post("/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.VALID_LOGIN_JSON))
+            mockMvc.perform(
+                            post("/auth/login")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(TestData.VALID_LOGIN_JSON)
+                    )
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken")
                             .value(TestData.ACCESS_TOKEN))
@@ -77,13 +92,18 @@ class AuthControllerTest extends BaseControllerTest {
         void shouldReturnUnauthorized() throws Exception {
 
             when(authService.login(anyString(), anyString()))
-                    .thenThrow(new ResponseStatusException(
-                            UNAUTHORIZED,
-                            "Invalid username or password"));
+                    .thenThrow(
+                            new ResponseStatusException(
+                                    UNAUTHORIZED,
+                                    "Invalid username or password"
+                            )
+                    );
 
-            mockMvc.perform(post("/auth/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.INVALID_LOGIN_JSON))
+            mockMvc.perform(
+                            post("/auth/login")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(TestData.INVALID_LOGIN_JSON)
+                    )
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.message")
                             .value("Invalid username or password"));
@@ -100,14 +120,18 @@ class AuthControllerTest extends BaseControllerTest {
             AuthAccessResponse response =
                     new AuthAccessResponse(
                             TestData.ACCESS_TOKEN,
-                            TestData.REFRESH_TOKEN);
+                            TestData.REFRESH_TOKEN
+                    );
 
-            when(authService.refresh(TestData.REFRESH_TOKEN))
-                    .thenReturn(response);
+            when(authService.refresh(
+                    TestData.REFRESH_TOKEN
+            )).thenReturn(response);
 
-            mockMvc.perform(post("/auth/refresh")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.VALID_REFRESH_JSON))
+            mockMvc.perform(
+                            post("/auth/refresh")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(TestData.VALID_REFRESH_JSON)
+                    )
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken")
                             .value(TestData.ACCESS_TOKEN))
@@ -120,13 +144,18 @@ class AuthControllerTest extends BaseControllerTest {
         void shouldRejectInvalidRefreshToken() throws Exception {
 
             when(authService.refresh(anyString()))
-                    .thenThrow(new ResponseStatusException(
-                            UNAUTHORIZED,
-                            "Invalid refresh token"));
+                    .thenThrow(
+                            new ResponseStatusException(
+                                    UNAUTHORIZED,
+                                    "Invalid refresh token"
+                            )
+                    );
 
-            mockMvc.perform(post("/auth/refresh")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.INVALID_REFRESH_JSON))
+            mockMvc.perform(
+                            post("/auth/refresh")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(TestData.INVALID_REFRESH_JSON)
+                    )
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.message")
                             .value("Invalid refresh token"));
@@ -145,19 +174,25 @@ class AuthControllerTest extends BaseControllerTest {
                             TestData.USERNAME,
                             TestData.EMAIL,
                             TestData.FULL_NAME,
-                            TestData.PASSWORD);
+                            TestData.PASSWORD
+                    );
 
             AuthAccessResponse response =
                     new AuthAccessResponse(
                             TestData.ACCESS_TOKEN,
-                            TestData.REFRESH_TOKEN);
+                            TestData.REFRESH_TOKEN
+                    );
 
             when(authService.register(any(RegisterRequest.class)))
                     .thenReturn(response);
 
-            mockMvc.perform(post("/auth/register")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+            mockMvc.perform(
+                            post("/auth/register")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            objectMapper.writeValueAsString(request)
+                                    )
+                    )
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.accessToken")
                             .value(TestData.ACCESS_TOKEN))
@@ -170,12 +205,19 @@ class AuthControllerTest extends BaseControllerTest {
         void shouldRejectDuplicateUsername() throws Exception {
 
             when(authService.register(any(RegisterRequest.class)))
-                    .thenThrow(new DuplicateUsernameException(
-                            "Username already exists"));
+                    .thenThrow(
+                            new DuplicateUsernameException(
+                                    "Username already exists"
+                            )
+                    );
 
-            mockMvc.perform(post("/auth/register")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.DUPLICATE_USERNAME_REGISTER_JSON))
+            mockMvc.perform(
+                            post("/auth/register")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            TestData.DUPLICATE_USERNAME_REGISTER_JSON
+                                    )
+                    )
                     .andExpect(status().isConflict());
         }
 
@@ -184,12 +226,19 @@ class AuthControllerTest extends BaseControllerTest {
         void shouldRejectDuplicateEmail() throws Exception {
 
             when(authService.register(any(RegisterRequest.class)))
-                    .thenThrow(new DuplicateEmailException(
-                            "Email already exists"));
+                    .thenThrow(
+                            new DuplicateEmailException(
+                                    "Email already exists"
+                            )
+                    );
 
-            mockMvc.perform(post("/auth/register")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.DUPLICATE_EMAIL_REGISTER_JSON))
+            mockMvc.perform(
+                            post("/auth/register")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            TestData.DUPLICATE_EMAIL_REGISTER_JSON
+                                    )
+                    )
                     .andExpect(status().isConflict());
         }
 
@@ -197,9 +246,13 @@ class AuthControllerTest extends BaseControllerTest {
         @DisplayName("Should reject invalid email")
         void shouldRejectInvalidEmail() throws Exception {
 
-            mockMvc.perform(post("/auth/register")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.INVALID_EMAIL_REGISTER_JSON))
+            mockMvc.perform(
+                            post("/auth/register")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            TestData.INVALID_EMAIL_REGISTER_JSON
+                                    )
+                    )
                     .andExpect(status().isBadRequest());
         }
 
@@ -207,9 +260,13 @@ class AuthControllerTest extends BaseControllerTest {
         @DisplayName("Should reject invalid password")
         void shouldRejectInvalidPassword() throws Exception {
 
-            mockMvc.perform(post("/auth/register")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(TestData.INVALID_PASSWORD_REGISTER_JSON))
+            mockMvc.perform(
+                            post("/auth/register")
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(
+                                            TestData.INVALID_PASSWORD_REGISTER_JSON
+                                    )
+                    )
                     .andExpect(status().isBadRequest());
         }
     }

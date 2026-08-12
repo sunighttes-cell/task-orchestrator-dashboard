@@ -1,9 +1,9 @@
 package com.taskOrchestrator.app.profile;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.taskOrchestrator.app.auth.domain.UserRepository;
+import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtAuthFilter;
+import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
 import com.taskOrchestrator.app.common.controller.AuthenticatedControllerTest;
-import com.taskOrchestrator.app.common.controller.BaseControllerTest;
+import com.taskOrchestrator.app.common.exception.GlobalExceptionHandler;
 import com.taskOrchestrator.app.profile.controller.UserProfileController;
 import com.taskOrchestrator.app.profile.service.UserProfileService;
 import com.taskOrchestrator.app.profile.dto.UpdatePasswordRequest;
@@ -11,15 +11,18 @@ import com.taskOrchestrator.app.profile.dto.UpdateProfileRequest;
 import com.taskOrchestrator.app.profile.dto.UserProfileResponse;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.mock.web.MockMultipartFile;
 import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -28,19 +31,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserProfileController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import({GlobalExceptionHandler.class, UserProfileControllerTest.TestConfig.class})
 class UserProfileControllerTest extends AuthenticatedControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        public JwtUtil jwtUtil() {
+            return mock(JwtUtil.class);
+        }
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Bean
+        public JwtAuthFilter jwtAuthFilter() {
+            return mock(JwtAuthFilter.class);
+        }
+    }
 
     @MockitoBean
     private UserProfileService userProfileService;
-
-//    @MockitoBean
-//    private UserRepository userRepository;
 
     private static final UUID USER_ID =
             UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -58,13 +67,19 @@ class UserProfileControllerTest extends AuthenticatedControllerTest {
 
     @Nested
     class GetProfile {
+
         @Test
         void shouldReturnAuthenticatedUserProfile() throws Exception {
+
             UserProfileResponse response = profileResponse();
-            given(userProfileService.getProfile()).willReturn(response);
+
+            given(userProfileService.getProfile())
+                    .willReturn(response);
 
             mockMvc.perform(
-                    get("/profile").with(authenticatedUser()))
+                            get("/profile")
+                                    .with(authenticatedUser())
+                    )
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id")
                             .value(USER_ID.toString()))
@@ -77,7 +92,8 @@ class UserProfileControllerTest extends AuthenticatedControllerTest {
                     .andExpect(jsonPath("$.fullName")
                             .value("Test User"));
 
-            verify(userProfileService).getProfile();
+            verify(userProfileService)
+                    .getProfile();
         }
     }
 
