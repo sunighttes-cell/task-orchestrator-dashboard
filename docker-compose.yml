@@ -24,7 +24,7 @@ services:
       SPRING_DATASOURCE_USERNAME: taskuser
       SPRING_DATASOURCE_PASSWORD: taskpass
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      JWT_SECRET: link-wonder-window-securl-918273645
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
 
