@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { getMetrics } from "@/api/dashboardApi";
+import { queryKeys } from "@/api/queryKeys";
 
 export function useDashboardMetrics() {
   return useQuery({
-    queryKey: ["dashboard-metrics"],
+    queryKey: queryKeys.dashboardMetrics,
     queryFn: getMetrics,
-    // refetchInterval: 10000, 
-    // refetchInterval: 900000,
-  })
+  });
 }

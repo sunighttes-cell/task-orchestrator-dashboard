@@ -1,6 +1,7 @@
+import type { JobFilters } from "@/hooks/jobs/useJobs";
 
 export const queryKeys = {
-  jobs: (filters: Record<string, any>) =>
+  jobs: (filters: JobFilters) =>
     ["jobs", JSON.stringify(filters ?? {})],
 
   job: (id: number) => ["job", id],

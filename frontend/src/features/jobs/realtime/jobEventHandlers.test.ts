@@ -4,11 +4,11 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { JobEvent } from "@/types/jobEvents";
 
 describe("handleJobEvent", () => {
-  it("refetches jobs, summary, and metrics for a realtime job event", async () => {
-    const refetchQueries = vi.fn().mockResolvedValue(undefined);
+  it("invalidates jobs, summary, and metrics for a realtime job event", async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
 
     const queryClient = {
-      refetchQueries,
+      invalidateQueries,
     } as unknown as QueryClient;
 
     const event: JobEvent = {
@@ -20,21 +20,21 @@ describe("handleJobEvent", () => {
 
     await handleJobEvent(event, queryClient);
 
-    expect(refetchQueries).toHaveBeenCalledTimes(3);
+    expect(invalidateQueries).toHaveBeenCalledTimes(3);
 
-    expect(refetchQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["jobs"],
-      type: "active",
+      refetchType: "all",
     });
 
-    expect(refetchQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["status-summary"],
-      type: "active",
+      refetchType: "all",
     });
 
-    expect(refetchQueries).toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ["dashboard-metrics"],
-      type: "active",
+      refetchType: "all",
     });
   });
 });

@@ -1,20 +1,24 @@
-// jobEventHandlers.ts
-
 import type { QueryClient } from "@tanstack/react-query";
 import type { JobEvent } from "@/types/jobEvents";
-import { queryKeys } from "@/api/queryKeys";
 
 export async function handleJobEvent(
   event: JobEvent,
   queryClient: QueryClient,
 ) {
-  console.log("Handling SSE event:", event.eventType, "jobId:", event.jobId, "status:", event.jobStatus);
-  try{
+  console.log(
+    "Handling SSE event:",
+    event.eventType,
+    "jobId:",
+    event.jobId,
+    "status:",
+    event.jobStatus
+  );
+
+  try {
     await invalidateJobQueries(queryClient);
   } catch (error) {
     console.error("Error invalidating job queries:", error);
   }
-
 }
 
 export async function invalidateJobQueries(
@@ -22,42 +26,41 @@ export async function invalidateJobQueries(
 ) {
   console.log("========== SSE REFRESH START ==========");
 
-  const results = await Promise.all([
-    queryClient.refetchQueries({
+  await Promise.all([
+    queryClient.invalidateQueries({
       queryKey: ["jobs"],
-      type: "active",
+      refetchType: "all",
     }),
 
-    queryClient.refetchQueries({
+    queryClient.invalidateQueries({
       queryKey: ["status-summary"],
-      type: "active",
+      refetchType: "all",
     }),
 
-    queryClient.refetchQueries({
+    queryClient.invalidateQueries({
       queryKey: ["dashboard-metrics"],
-      type: "active",
+      refetchType: "all",
     }),
   ]);
 
   console.log("========== SSE REFRESH COMPLETE ==========");
 
-  console.log("Jobs cache:",
+  console.log(
+    "Jobs cache:",
     queryClient.getQueriesData({
       queryKey: ["jobs"],
     })
   );
 
-  console.log("Summary cache:",
-    queryClient.getQueryData(
-      queryKeys.statusSummary
-    )
+  console.log(
+    "Summary cache:",
+    queryClient.getQueryData(["status-summary"])
   );
 
-  console.log("Metrics cache:",
-    queryClient.getQueryData(
-      queryKeys.dashboardMetrics
-    )
+  console.log(
+    "Metrics cache:",
+    queryClient.getQueryData(["dashboard-metrics"])
   );
 
-  console.log("Refetch results:", results);
+  console.log("========== SSE REFRESH END ==========");
 }
