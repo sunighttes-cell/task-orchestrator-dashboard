@@ -20,14 +20,39 @@ apiClient.interceptors.request.use((config) => {
 });
 
 //refresh token logic
-let isRefreshing = false;
-let pendingRequests: any[] = [];
+// let isRefreshing = false;
+// let pendingRequests: any[] = [];
 
-function processQueue(error: any, token: string | null) {
+// function processQueue(error: any, token: string | null) {
+//   pendingRequests.forEach((prom) => {
+//     if (error) {
+//       prom.reject(error);
+//     } else {
+//       prom.resolve(token);
+//     }
+//   });
+
+//   pendingRequests = [];
+// }
+
+// refresh token logic
+let isRefreshing = false;
+
+type PendingRequest = {
+  resolve: (token: string) => void;
+  reject: (error: Error) => void;
+};
+
+let pendingRequests: PendingRequest[] = [];
+
+function processQueue(
+  error: Error | null,
+  token: string | null
+) {
   pendingRequests.forEach((prom) => {
     if (error) {
       prom.reject(error);
-    } else {
+    } else if (token) {
       prom.resolve(token);
     }
   });
@@ -79,15 +104,16 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
 
         return apiClient(originalRequest);
-      } catch (refreshError) {
+      } 
+      catch (refreshError) {
         console.log("refreshError in catch", refreshError);
-
-        processQueue(refreshError, null);
-
-        emitUnauthorized(); //fallback logout
-
-        return Promise.reject(refreshError);
-      } finally {
+        const error = refreshError instanceof Error
+            ? refreshError
+            : new Error("Token refresh failed");
+        processQueue(error, null);
+        emitUnauthorized();
+        return Promise.reject(error);
+      }finally {
         isRefreshing = false;
       }
     }
