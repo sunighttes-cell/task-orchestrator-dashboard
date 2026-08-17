@@ -43,8 +43,7 @@ export function useCreateJob() {
     },
 
     onError: (_err, _newJob, context) => {
-      //rollback cache update on error
-      context?.previous.forEach(([key, data]: [readonly unknown[], unknown]) => {
+        context?.previous.forEach(([key, data]) => {
         queryClient.setQueryData(key, data);
       });
     },
