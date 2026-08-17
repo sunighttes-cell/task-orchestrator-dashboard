@@ -5,7 +5,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
 import { useProfileUpdate } from "@/hooks/profile/useProfileUpdate";
-import { useAuth } from "@/auth/AuthContext";
 import { useNavigate } from 'react-router-dom';
 import type { UpdateUserProfileRequest } from "@/types/profile";
 
@@ -17,9 +16,6 @@ const updateProfileSchema = z.object({
 type FormData = z.infer<typeof updateProfileSchema>;
 
 const UpdateProfileModal = ({ onClose }: { onClose: () => void}) => {
-  const { auth } = useAuth();
-  const { user } = auth || {};
-
   const mutation = useProfileUpdate();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);

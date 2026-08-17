@@ -5,6 +5,7 @@ import type {
   JobsPageResponse,
 } from "@/types/job";
 import apiClient from "./client";
+import type { JobFilters } from "@/hooks/jobs/useJobs";
 
 // getLoginToken
 export async function getLoginToken(
@@ -33,7 +34,7 @@ export async function createJob(
 // getJobs
 //Axios handles encoding safely. We can pass the filters as an object to the params option, and Axios will take care of encoding them properly. This way, we avoid any issues with special characters in the filter values.
 export async function getJobs(
-  filters: Record<string, any>
+  filters: JobFilters
 ): Promise<JobsPageResponse> {
   const res = await apiClient.get("/jobs", { params: filters });
   return res.data;

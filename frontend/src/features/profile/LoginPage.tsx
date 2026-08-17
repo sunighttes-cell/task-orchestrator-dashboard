@@ -1,5 +1,5 @@
 import { useAuthLogin } from "@/hooks/auth/useAuthLogin";
-import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
+import { PrimaryBtnClass } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate } from 'react-router-dom';

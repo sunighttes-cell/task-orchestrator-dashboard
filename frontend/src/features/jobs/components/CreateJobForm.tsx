@@ -1,7 +1,6 @@
 //job form
 import { useState } from "react";
 import CreateJobModal from "./CreateJobModal";
-import { PrimaryBtnClass } from "@/lib/constants";
 
 const CreateJobForm = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
-
 import Avatar from "./Avatar";
 import { PrimaryBtnClass } from "@/lib/constants";
 import { useUploadAvatar } from "@/hooks/profile/useUploadAvatar";
@@ -12,8 +11,7 @@ interface AvatarUploadProps {
     currentAvatar?: string | null;
 }
 
-const AvatarUpload: React.FC<AvatarUploadProps> = ({
-}) => {
+const AvatarUpload: React.FC<AvatarUploadProps> = () => {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);

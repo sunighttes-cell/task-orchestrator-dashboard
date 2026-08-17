@@ -1,7 +1,7 @@
 import { useRegisterUser } from "@/hooks/profile/useRegisterUser";
 import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { email, z } from "zod";
+import { z } from "zod";
 import { useNavigate } from 'react-router-dom';
 import { useForm } from "react-hook-form";
 import type {RegisterUserRequest} from "@/types/auth";
@@ -41,7 +41,7 @@ const confirmPassword = watch("confirmPassword") || "";
 
 console.log("newPassword: ", newPassword, "confirmPassword: ", confirmPassword, "username", username);
 
-let validation = usePasswordValidation("", newPassword, confirmPassword, username);
+const validation = usePasswordValidation("", newPassword, confirmPassword, username);
 
 console.log("Password validation on change", validation);
 

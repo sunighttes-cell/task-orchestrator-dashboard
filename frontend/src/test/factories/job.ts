@@ -1,6 +1,5 @@
 // src/test/factories/job.ts
 
-import { refreshAccessToken } from "@/auth/api/AuthApi";
 import { JobStatus } from "@/types/job";
 
 const MOCK_TIMESTAMP = "2026-01-01T00:00:00.000Z";

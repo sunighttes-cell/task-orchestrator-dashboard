@@ -10,15 +10,12 @@ interface ProfileAvatarProps {
 }
 
 const ProfileAvatar: React.FC<ProfileAvatarProps> = ({size = "md" }) => {
-  const { data: profile, refetch } = useProfile();
+  const { data: profile} = useProfile();
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const baseUrl = import.meta.env.VITE_API_BASE_URL;
   const avatarSrc = profile?.profilePictureUrl && !profile.profilePictureUrl.startsWith('http') ? `${baseUrl}${profile.profilePictureUrl}` : profile?.profilePictureUrl;
   
-  console.log("Current profile in profileAvatar:", profile);
-  console.log("Avatar src in profileAvatar:", avatarSrc);
-
   const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to logout?");
     if (confirmed) {

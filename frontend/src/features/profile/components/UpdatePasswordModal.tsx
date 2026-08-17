@@ -41,7 +41,7 @@ const confirmNewPassword = watch("confirmNewPassword") || "";
 
 console.log("currentPassword: ", currentPassword, "newPassword: ", newPassword, "confirmNewPassword: ", confirmNewPassword);
 
-let validation = usePasswordValidation(currentPassword, newPassword, confirmNewPassword, profile.username);
+const validation = usePasswordValidation(currentPassword, newPassword, confirmNewPassword, profile.username);
 
 console.log("Profile before updating.", profile);
 console.log("Password validation on change", validation);
@@ -58,7 +58,7 @@ const onSubmit = (data: FormData) => {
   if (!validation?.valid) return;
 
   mutation.mutate(updatePasswordRequest, {
-  onSuccess: (updatedProfile) => {
+  onSuccess: () => {
       toast.success("Profile password updated.");
       // Refetch to ensure profile data is fresh
       refetch();
