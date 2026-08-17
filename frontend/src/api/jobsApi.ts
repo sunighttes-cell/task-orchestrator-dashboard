@@ -26,7 +26,7 @@ export async function getRefreshToken(
 // createJob
 export async function createJob(
   createJobRequest: CreateJobRequest
-): Promise<Job> {
+): Promise<JobsPageResponse> {
   const res = await apiClient.post("/jobs", createJobRequest);
   return res.data;
 }

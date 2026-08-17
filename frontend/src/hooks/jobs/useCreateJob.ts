@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createJob } from "@/api/jobsApi";
 // import { type Job, type CreateJobRequest} from "@/types/job";
-import { JobStatus } from "@/types/job";
+import { JobStatus, type JobsPageResponse } from "@/types/job";
 
 export function useCreateJob() {
   const queryClient = useQueryClient();
@@ -16,10 +16,12 @@ export function useCreateJob() {
 
         const previous = queryClient.getQueriesData({ queryKey: ["jobs"] });
 
-        queryClient.setQueriesData(
+        queryClient.setQueriesData<JobsPageResponse>(
           { queryKey: ["jobs"] },
-          (old: any | undefined) => {
-            if (!old) return old;
+          (old) => {
+            if (!old) {
+              return old;
+            }
 
             return {
               ...old,
@@ -28,22 +30,21 @@ export function useCreateJob() {
                   id: Date.now(),
                   name: newJob.name,
                   status: JobStatus.QUEUED,
-                  createdAt: new Date().toISOString(), 
-                  updatedAt: new Date().toISOString(), 
-                  retryCount: 0
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  retryCount: 0,
                 },
                 ...old.content,
               ],
             };
           }
         );
-
       return { previous };
     },
 
     onError: (_err, _newJob, context) => {
       //rollback cache update on error
-      context?.previous.forEach(([key, data]: any) => {
+      context?.previous.forEach(([key, data]: [readonly unknown[], unknown]) => {
         queryClient.setQueryData(key, data);
       });
     },
