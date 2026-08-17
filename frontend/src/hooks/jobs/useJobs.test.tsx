@@ -25,7 +25,7 @@ describe("useJobs", () => {
     );
 
     const { result } = renderHook(
-      () => useJobs({ status: "FAILED", page: 0, size: 10 }),
+      () => useJobs({ status: "FAILED", search: undefined, page: 0, size: 10, sort: "createdAt,desc" }),
       { wrapper: createWrapper() }
     );
 
@@ -43,7 +43,7 @@ describe("useJobs", () => {
       )
     );
 
-    const { result } = renderHook(() => useJobs({}), {
+    const { result } = renderHook(() => useJobs({ status: "", search: undefined, page: 0, size: 0, sort: ""}), {
       wrapper: createWrapper(),
     });
 
@@ -53,7 +53,7 @@ describe("useJobs", () => {
   });
 
   it("starts in loading state", () => {
-    const { result } = renderHook(() => useJobs({}), {
+    const { result } = renderHook(() => useJobs({ status: "", search: undefined, page: 0, size: 0, sort: ""}), {
       wrapper: createWrapper(),
     });
 

@@ -6,7 +6,7 @@ import {useState, useEffect} from "react";
 import CreateJobForm from "@/features/jobs/components/CreateJobForm";
 import {useDebounce} from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty";
+import { Empty } from "@/components/ui/empty";
 import { FilterSearch } from "@/components/FilterSearch";
 import {JobStatusFilterValues} from "@/lib/constants"
 import { useJobFilters } from "@/hooks/jobs/useJobFilters";
@@ -14,12 +14,19 @@ import { EmptyData } from "@/components/EmptyData";
 
 export default function JobsPage() {
   //data // first load // background refresh
-
   //get data
   const { filters, searchParams, setSearchParams } = useJobFilters();
-  const { data, isLoading, isFetching, isError } = useJobs(filters);
-  const jobs = data?.content ?? [];
-  const totalPages = data?.totalPages ?? 0;
+  const { data: jobsData, isLoading, isFetching, isError } = useJobs(filters);
+  //handle search
+  const [searchInput, setSearchInput] = useState(filters.search ?? "");
+
+  useEffect(() => {
+    setSearchInput(filters.search ?? "");
+  }, [filters.search]);
+
+  const jobs = jobsData?.content ?? [];
+  const totalPages = jobsData?.totalPages ?? 0;
+  const currentPage = jobsData?.number ?? filters.page;
 
   //handle page change
   const handlePageChange = (newPage: number) => {
@@ -28,8 +35,6 @@ export default function JobsPage() {
     setSearchParams(params);
   };
 
-  //handle search
-  const [searchInput, setSearchInput] = useState(filters.search ?? "");
   const debouncedSearch = useDebounce(searchInput, 300);
 
   useEffect(() => {
@@ -60,14 +65,6 @@ export default function JobsPage() {
 
     setSearchParams(params);
   };
-
-  useEffect(() => {
-    setSearchInput(filters.search ?? "");
-  }, [filters.search]);
-
-  useEffect(() => {
-    console.log("Jobs query data changed", data);
-  }, [data]);
 
   return (
       <div className="space-y-6 p-6">
@@ -100,7 +97,7 @@ export default function JobsPage() {
             jobs={jobs} 
             totalPages={totalPages} 
             handlePageChange={handlePageChange}
-            page={filters.page}/>
+            page={currentPage}/>
         )}
       </div>
   );

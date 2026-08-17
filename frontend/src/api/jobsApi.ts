@@ -48,7 +48,6 @@ export async function retryJob(jobId: number): Promise<Job> {
 // getStatusSummary
 export async function getStatusSummary(): Promise<StatusSummaryResponse[]> {
   const res = await apiClient.get("/jobs/status-summary");
-  console.log("Fetching status summary");
   return res.data;
 }
 
