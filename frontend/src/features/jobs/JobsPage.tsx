@@ -10,6 +10,7 @@ import { FilterSearch } from "@/components/FilterSearch";
 import {JobStatusFilterValues} from "@/lib/constants"
 import { useJobFilters } from "@/hooks/jobs/useJobFilters";
 import { EmptyData } from "@/components/EmptyData";
+import type { JobStatus } from "@/types/job";
 
 export default function JobsPage() {
   //data // first load // background refresh
@@ -69,8 +70,8 @@ export default function JobsPage() {
         <FilterSearch search={searchInput} onChange={handleSearchChange}/>
         {/*Filter Jobs*/}
         <FilterDropdown 
-        status={filters.status ?? "ALL"}
-        optionValues={JobStatusFilterValues} 
+        status={filters.status as JobStatus ?? "ALL" as JobStatus}
+        optionValues={JobStatusFilterValues as string[]} 
         onChange = {handleStatusChange}>
         </FilterDropdown>
         {isFetching && (

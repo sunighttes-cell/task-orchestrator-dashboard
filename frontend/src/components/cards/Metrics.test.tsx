@@ -14,6 +14,16 @@ const metricsData = {
   avgExecutionTime: 2.02,
 };
 
+const metricsEmptyData = {
+  totalJobs: 0,
+  completedJobs: 0,
+  runningJobs: 0,
+  failedJobs: 0,
+  successRate: 0,
+  activeWorkers: 0,
+  avgExecutionTime: 0,
+};
+
 describe("MetricCard", () => {
   it("renders title, value, and description", () => {
     renderWithProviders(
@@ -44,7 +54,7 @@ describe("MetricsGrid", () => {
 
   it("renders empty state", () => {
     renderWithProviders(
-      <MetricsGrid metrics={null} isLoading={false} />
+      <MetricsGrid metrics={metricsEmptyData} isLoading={false} />
     );
 
     expect(screen.getByText(/no jobs found/i)).toBeInTheDocument();
@@ -53,7 +63,7 @@ describe("MetricsGrid", () => {
 
   it("renders loading state", () => {
     renderWithProviders(
-      <MetricsGrid metrics={null} isLoading={true} />
+      <MetricsGrid metrics={metricsEmptyData} isLoading={true} />
     );
 
     expect(screen.getByText(/loading/i)).toBeInTheDocument();

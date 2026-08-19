@@ -1,8 +1,10 @@
+import type { JobStatus } from "@/types/job";
+
 //implement dropdown filter for job status
 interface Props { 
-  status: string,
-  onChange: (arg) => void,
-  optionValues: string []
+  status: JobStatus,
+  onChange: (status: JobStatus) => void,
+  optionValues: string[]
 }
 
 export const FilterDropdown: React.FC<Props> = ({ status, onChange, optionValues}) =>  {
@@ -11,7 +13,7 @@ export const FilterDropdown: React.FC<Props> = ({ status, onChange, optionValues
       {optionValues && 
         <select
         value={status}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value as JobStatus)}
         className="border rounded px-3 py-2"
       >
        {optionValues.map((option, index) =>(<option key={index} value={option}>{option}</option>))}

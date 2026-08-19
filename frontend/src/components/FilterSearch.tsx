@@ -1,6 +1,6 @@
 //implement search input
 interface Props {
-  onChange: (arg) => void, 
+  onChange: (arg: string) => void, 
   search: string
 }
 

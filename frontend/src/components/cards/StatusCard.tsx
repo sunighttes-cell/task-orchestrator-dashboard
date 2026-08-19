@@ -28,7 +28,7 @@ const StatusCard: React.FC<Props> = ({ job, onRetry }) => {
         await deleteJob(job.id);
       }
     } catch(error){
-      toast.error("Failed to delete job:", error)
+      toast.error("Failed to delete job:" + (error instanceof Error ? error.message : String(error)));
     }
   };
 

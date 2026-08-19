@@ -1,11 +1,12 @@
 //Summary Card Component
 import { Card, CardContent} from "@/components/ui/card";
 import {StatusColor} from "@/lib/constants";
+import type { JobStatus } from "@/types/job";
 
 interface Props {
-  summary: {count: number, status: string};
+  summary: {count: number, status: JobStatus};
   isSelected?: boolean;
-  onClick?: (status: string) => void;
+  onClick?: (status: JobStatus) => void;
 }
 
 const SummaryCard: React.FC<Props> = ({
