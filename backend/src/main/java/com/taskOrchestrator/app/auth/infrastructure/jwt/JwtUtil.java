@@ -1,4 +1,5 @@
 package com.taskOrchestrator.app.auth.infrastructure.jwt;
+import java.nio.charset.StandardCharsets;
 
 import com.taskOrchestrator.app.auth.domain.User;
 import io.jsonwebtoken.*;
@@ -19,9 +20,13 @@ public class JwtUtil {
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.access-expiration}") long accessExpiration,
-                   @Value("${jwt.refresh-expiration}") long refreshExpiration,
-                   @Value("${jwt.expiration}") long expiration) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+                   @Value("${jwt.refresh-expiration}") long refreshExpiration)
+    {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET must be configured");
+        }
+        //this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessExpiration = accessExpiration;
         this.refreshExpiration = refreshExpiration;
     }

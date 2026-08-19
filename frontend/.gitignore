@@ -7,6 +7,11 @@ frontend/.env
 backend/target
 backend/.env
 
+# Environment files
+.env
+.env.*
+!.env.example
+
 # system
 .DS_Store
 .idea

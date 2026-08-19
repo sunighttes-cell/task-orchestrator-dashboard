@@ -32,10 +32,12 @@ build/
 ### VS Code ###
 .vscode/
 
-### Environment files
+# Environment files
 .env
-*.env
+.env.*
+!.env.example
 
 ### Uploaded files
+uploads/
 uploads/*
-!uploads/.gitkeep
+##!uploads/.gitkeep
