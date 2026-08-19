@@ -3,10 +3,11 @@ import SummaryCard from "@/components/cards/SummaryCard";
 import { useNavigate } from "react-router-dom";
 import {Skeleton} from "@/components/ui/skeleton"
 import { EmptyData } from "../EmptyData";
+import type { StatusSummaryResponse } from "@/types/job";
 
 //queued //running //completed //failed
 interface Props {
-  datasummary: any | undefined;
+  datasummary: StatusSummaryResponse[] | undefined;
   navigateBaseURL: string;
   isLoading: boolean;
 }

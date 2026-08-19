@@ -84,11 +84,6 @@ export function useJobEvents({ accessToken, onEvent, onOpen,}: UseJobEventsOptio
       setStatus("DISCONNECTED");
     };
 
-    // return () => {
-    //   controller.abort();
-    //   setStatus("DISCONNECTED");
-    // };
-
   }, [accessToken, onEvent, onOpen, realtimeUrl,]);
 
   return { status, };

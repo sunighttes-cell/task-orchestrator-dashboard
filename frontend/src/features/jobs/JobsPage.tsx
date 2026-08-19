@@ -2,9 +2,8 @@ import { PageHeader } from "@/layout/PageHeader";
 import JobsDataTable from "./JobsDataTable";
 import {FilterDropdown} from "@/components/FilterDropdown";
 import { useJobs } from "@/hooks/jobs/useJobs";
-import {useState, useEffect} from "react";
+import {useState} from "react";
 import CreateJobForm from "@/features/jobs/components/CreateJobForm";
-import {useDebounce} from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Empty } from "@/components/ui/empty";
 import { FilterSearch } from "@/components/FilterSearch";
@@ -20,10 +19,6 @@ export default function JobsPage() {
   //handle search
   const [searchInput, setSearchInput] = useState(filters.search ?? "");
 
-  useEffect(() => {
-    setSearchInput(filters.search ?? "");
-  }, [filters.search]);
-
   const jobs = jobsData?.content ?? [];
   const totalPages = jobsData?.totalPages ?? 0;
   const currentPage = jobsData?.number ?? filters.page;
@@ -35,13 +30,12 @@ export default function JobsPage() {
     setSearchParams(params);
   };
 
-  const debouncedSearch = useDebounce(searchInput, 300);
-
-  useEffect(() => {
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
     const params = new URLSearchParams(searchParams);
 
-    if (debouncedSearch) {
-      params.set("search", debouncedSearch);
+    if (value.trim()) {
+      params.set("search", value.trim());
     } else {
       params.delete("search");
     }
@@ -49,7 +43,7 @@ export default function JobsPage() {
     params.set("page", "0");
 
     setSearchParams(params);
-  }, [debouncedSearch]);
+  };
 
   //handle status/filter change
   const handleStatusChange = (value: string) => {
@@ -72,7 +66,7 @@ export default function JobsPage() {
         {/* Create Jobs */}
         <div><CreateJobForm/></div>
         {/* Search Jobs*/}
-        <FilterSearch search={searchInput} onChange={setSearchInput}/>
+        <FilterSearch search={searchInput} onChange={handleSearchChange}/>
         {/*Filter Jobs*/}
         <FilterDropdown 
         status={filters.status ?? "ALL"}
@@ -91,8 +85,7 @@ export default function JobsPage() {
             </div>
         ) : isError ? (
             <div role="alert">Error loading jobs</div>
-        ) : !jobs  || jobs.length === 0 ? (<EmptyData/>
-) : (
+        ) : !jobs  || jobs.length === 0 ? (<EmptyData/>) : (
             <JobsDataTable 
             jobs={jobs} 
             totalPages={totalPages} 
