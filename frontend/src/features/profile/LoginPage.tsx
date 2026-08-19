@@ -16,7 +16,8 @@ type FormData = z.infer<typeof loginDataSchema>;
 export default function LoginPage() {
   const mutation = useAuthLogin();
   const navigate = useNavigate();
-  const [loginErr, setLoginErr] = useState(null);
+  // const [loginErr, setLoginErr] = useState(null);
+  const [loginErr, setLoginErr] = useState<string | null>(null);
   
 const {
   register,

@@ -38,11 +38,9 @@ const UpdatePasswordModal = ({ onClose }: { onClose: () => void}) => {
 const currentPassword = watch("currentPassword") || "";
 const newPassword = watch("newPassword") || "";
 const confirmNewPassword = watch("confirmNewPassword") || "";
+const profileUsername = profile?.username || "";
 
-console.log("currentPassword: ", currentPassword, "newPassword: ", newPassword, "confirmNewPassword: ", confirmNewPassword);
-
-const validation = usePasswordValidation(currentPassword, newPassword, confirmNewPassword, profile.username);
-
+const validation = usePasswordValidation(currentPassword, newPassword, confirmNewPassword, profileUsername);
 console.log("Profile before updating.", profile);
 console.log("Password validation on change", validation);
   
