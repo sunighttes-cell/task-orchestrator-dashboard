@@ -1,9 +1,18 @@
-import { useMemo } from "react";
 import { SimpleDataTable } from "@/components/tables/SimpleDataTable";
+import { useMemo } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { Job } from "@/types/job";
 
-export default function JobsDataTable({ jobs, totalPages, page, handlePageChange}) {
+interface JobsDataTableProps {
+  jobs: Job[];
+  totalPages: number;
+  page: number;
+  handlePageChange: (page: number) => void;
+}
+
+export default function JobsDataTable({ jobs, totalPages, page, handlePageChange}: JobsDataTableProps) {
   
-  const columns = useMemo(() => [
+  const columns = useMemo<ColumnDef<Job, unknown>[]>(() => [
     {
       header: "Job ID",
       accessorKey: "id",

@@ -3,11 +3,20 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   flexRender,
+  type ColumnDef,
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
 
-export function SimpleDataTable({ columns, data, totalPages, page, handlePageChange }) {
+interface SimpleDataTableProps<TData> {
+  columns: ColumnDef<TData, unknown>[];
+  data: TData[];
+  totalPages: number;
+  page: number;
+  handlePageChange: (page: number) => void;
+}
+
+export function SimpleDataTable<TData>({ columns, data, totalPages, page, handlePageChange }: SimpleDataTableProps<TData>){
   const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
