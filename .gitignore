@@ -2,6 +2,7 @@
 frontend/node_modules/
 frontend/dist/
 frontend/.env
+frontend/.env.*
 frontend/.env.local
 frontend/.env.*.local
 
@@ -16,6 +17,8 @@ backend/*/*.iml
 backend/*/mvnw
 backend/*/mvnw.cmd
 backend/*/.mvn/
+# Backend Uploaded files
+backend/*/uploads/
 
 # IDE
 .idea/
@@ -28,6 +31,8 @@ backend/*/.mvn/
 
 # Environment files
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 
