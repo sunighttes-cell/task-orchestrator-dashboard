@@ -22,14 +22,11 @@ export default function LoginPage() {
 const {
   register,
   handleSubmit,
-  formState: { errors, isValid },
+  formState: { errors },
 } = useForm<FormData>({
   resolver: zodResolver(loginDataSchema),
   mode: "onChange",
 });
-
-  console.log("errors", errors);
-  console.log("isValid", isValid);
 
   const onSubmit = (data: FormData) => {
     // Extract username and password from form inputs
@@ -38,7 +35,6 @@ const {
       password: data.password,
     };
 
-    console.log("Login credentials:", credentials);
     mutation.mutate(credentials, {
     onSettled: () => {
       if(!mutation.data) { 
@@ -46,8 +42,6 @@ const {
       }} 
     });
   };
-
-  console.log("Login Page: token:", mutation.data, "Login error:", mutation.error);
   
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50">

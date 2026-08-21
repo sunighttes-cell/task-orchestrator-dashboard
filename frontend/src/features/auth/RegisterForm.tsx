@@ -26,14 +26,11 @@ const {
   register,
   watch,
   handleSubmit,
-  formState: { errors, isValid },
+  formState: { errors },
 } = useForm<FormData>({
   resolver: zodResolver(registerUserDataSchema),
   mode: "onSubmit",
 });
-
-console.log("errors", errors);
-console.log("isValid", isValid);
 
 const username = watch("username") || "";
 const newPassword = watch("password") || "";
@@ -49,8 +46,6 @@ const validation = usePasswordValidation("", newPassword, confirmPassword, usern
       fullName: data.fullName,
       password: data.password,
     };
-
-    console.log("Password validation on submit: ", validation);
 
     if (!validation?.valid) return;
 
