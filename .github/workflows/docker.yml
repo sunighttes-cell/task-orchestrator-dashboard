@@ -43,6 +43,8 @@ jobs:
         with:
           context: ./frontend
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-frontend:latest
@@ -53,6 +55,8 @@ jobs:
         with:
           context: ./backend
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-backend:latest
