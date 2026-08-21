@@ -14,7 +14,7 @@ FROM eclipse-temurin:21-jdk-jammy
 
 WORKDIR /app
 
-COPY --from=builder /app/target/*.jar app.jar
+COPY target/task-orchestrator-*.jar app.jar
 
 EXPOSE 8080
 
