@@ -10,7 +10,7 @@ import { FilterSearch } from "@/components/FilterSearch";
 import {JobStatusFilterValues} from "@/lib/constants"
 import { useJobFilters } from "@/hooks/jobs/useJobFilters";
 import { EmptyData } from "@/components/EmptyData";
-import type { JobStatus } from "@/types/job";
+import type { JobStatus, Job } from "@/types/job";
 
 export default function JobsPage() {
   //data // first load // background refresh
