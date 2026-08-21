@@ -26,30 +26,19 @@ const {
   register,
   watch,
   handleSubmit,
-  formState: { errors, isValid },
+  formState: { errors },
 } = useForm<FormData>({
   resolver: zodResolver(registerUserDataSchema),
   mode: "onSubmit",
 });
 
-console.log("errors", errors);
-console.log("isValid", isValid);
-
 const username = watch("username") || "";
 const newPassword = watch("password") || "";
 const confirmPassword = watch("confirmPassword") || "";
-
-console.log("newPassword: ", newPassword, "confirmPassword: ", confirmPassword, "username", username);
-
 const validation = usePasswordValidation("", newPassword, confirmPassword, username);
 
-console.log("Password validation on change", validation);
-
   const onSubmit = (data: FormData) => {
-    console.log("Submitting Register form");
-    console.log("Form data:", data);
-    console.log("Form data:", data.username, data.email, data.fullName, data.password, data.confirmPassword);
-
+    
     // Extract username datafrom form inputs
     const registerUserRequest: RegisterUserRequest = {
       username: data.username,
@@ -58,16 +47,11 @@ console.log("Password validation on change", validation);
       password: data.password,
     };
 
-    console.log("Password validation on submit: ", validation);
-
     if (!validation?.valid) return;
 
     //console.log("Register credentials:", registerUserRequest);
-    console.log("UI: Mutating user with request:", registerUserRequest);
     mutation.mutate(registerUserRequest);
   };
-
-  console.log("Register Page: token:", mutation.data, "Register error:", mutation.error);
   
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50">
