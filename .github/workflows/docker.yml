@@ -95,6 +95,3 @@ jobs:
             ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-backend:${{ github.sha }}
 
       
-            
-
-            
