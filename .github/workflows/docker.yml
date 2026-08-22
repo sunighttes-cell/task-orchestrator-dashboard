@@ -1,4 +1,4 @@
-name: Docker Build
+name: Docker Images
 
 on:
   pull_request:
@@ -8,95 +8,204 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
 
 permissions:
   contents: read
   packages: write
   id-token: write
-  
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+
+  ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+
+  BACKEND_IMAGE: task-orchestrator-backend
+  FRONTEND_IMAGE: task-orchestrator-frontend
+
 jobs:
   docker:
+    name: Build Docker Images
     runs-on: ubuntu-latest
 
     steps:
+      # ---------------------------------------------------------
+      # Checkout
+      # ---------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Build backend JAR
-        working-directory: backend
-        run: ./mvnw clean package -DskipTests
-
+      # ---------------------------------------------------------
+      # QEMU
+      #
+      # Required because GitHub's standard runner is amd64
+      # and we are also building linux/arm64 images.
+      # ---------------------------------------------------------
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
+      # ---------------------------------------------------------
+      # Docker Buildx
+      # ---------------------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to Docker Hub
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME_1 }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # ---------------------------------------------------------
+      # Verify Docker / Buildx
+      # ---------------------------------------------------------
+      - name: Verify Docker Buildx
+        run: |
+          docker version
+          docker buildx version
+          docker buildx inspect --bootstrap
 
+      #---------------------------------------------------------
+      # GHCR credentials 
+      # ---------------------------------------------------------
       - name: Login to GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >
+          github.event_name == 'push' &&
+          (
+            github.ref == 'refs/heads/main' ||
+            startsWith(github.ref, 'refs/tags/v')
+          )
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      # ---------------------------------------------------------
+      # AWS credentials through GitHub OIDC
+      #
+      # PR:
+      #   Do NOT authenticate to ECR
+      #
+      # main:
+      #   Authenticate
+      #
+      # v1.0.0:
+      #   Authenticate
+      # ---------------------------------------------------------
       - name: Configure AWS credentials
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >
+          github.event_name == 'push' &&
+          (
+            github.ref == 'refs/heads/main' ||
+            startsWith(github.ref, 'refs/tags/v')
+          )
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # ---------------------------------------------------------
+      # Login to ECR
+      # ---------------------------------------------------------
       - name: Login to Amazon ECR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: >
+          github.event_name == 'push' &&
+          (
+            github.ref == 'refs/heads/main' ||
+            startsWith(github.ref, 'refs/tags/v')
+          )
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v6
+      # ---------------------------------------------------------
+      # Docker metadata - Backend
+      #
+      # main:
+      #   latest
+      #   sha-xxxxxxxx
+      #
+      # v1.0.0:
+      #   1.0.0
+      #   1.0
+      #   sha-xxxxxxxx
+      # ---------------------------------------------------------
+      - name: Docker metadata - backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
         with:
-          context: ./frontend
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          images: |
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_IMAGE }}
+            ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-frontend:latest
-            ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-frontend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-frontend:${{ github.sha }}
-            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-frontend:latest
-            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-frontend:${{ github.sha }}            
-            
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      # ---------------------------------------------------------
+      # Docker metadata - Frontend
+      # ---------------------------------------------------------
+      - name: Docker metadata - frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: | 
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+            ghcr.io/${{ github.repository_owner }}/task-orchestrator-frontend
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      # ---------------------------------------------------------
+      # Build / Push Backend
+      #
+      # PR:
+      #   Build only
+      #
+      # main:
+      #   Build + Push
+      #
+      # v1.0.0:
+      #   Build + Push
+      # ---------------------------------------------------------
       - name: Build and push backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
+          file: ./backend/Dockerfile
           platforms: linux/amd64,linux/arm64
+
+          push: >
+            ${{ github.event_name == 'push' &&
+            (
+              github.ref == 'refs/heads/main' ||
+              startsWith(github.ref, 'refs/tags/v')
+            ) }}
+
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-backend:latest
-            ${{ secrets.DOCKERHUB_USERNAME_1 }}/task-orchestrator-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend:latest
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend:${{ github.sha }}
-            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-backend:latest
-            ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-backend:${{ github.sha }}
 
-      
+      # ---------------------------------------------------------
+      # Build / Push Frontend
+      # ---------------------------------------------------------
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+
+          push: >
+            ${{ github.event_name == 'push' &&
+            (
+              github.ref == 'refs/heads/main' ||
+              startsWith(github.ref, 'refs/tags/v')
+            ) }}
+
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
