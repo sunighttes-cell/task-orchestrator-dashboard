@@ -13,7 +13,7 @@ permissions:
   contents: read
   packages: write
   id-token: write
-
+  
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -93,3 +93,8 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend:${{ github.sha }}
             ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-backend:latest
             ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/task-orchestrator-backend:${{ github.sha }}
+
+      
+            
+
+            
