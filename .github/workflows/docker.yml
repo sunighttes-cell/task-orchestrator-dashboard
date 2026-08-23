@@ -62,6 +62,21 @@ jobs:
           docker buildx version
           docker buildx inspect --bootstrap
 
+      # ---------------------------------------------------------
+      # Determine Docker version
+      # ---------------------------------------------------------
+      - name: Determine Docker version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=""
+          fi
+
+          echo "VERSION=${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       #---------------------------------------------------------
       # GHCR credentials 
       # ---------------------------------------------------------
@@ -159,11 +174,10 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_IMAGE }}
             ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix=sha-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
+              type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+              type=sha,prefix=sha-
+              type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
+              
       # ---------------------------------------------------------
       # Docker metadata - Frontend
       # ---------------------------------------------------------
@@ -175,10 +189,9 @@ jobs:
             ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}
             ghcr.io/${{ github.repository_owner }}/task-orchestrator-frontend
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.version != '' }}
 
       # ---------------------------------------------------------
       # Build / Push Backend
