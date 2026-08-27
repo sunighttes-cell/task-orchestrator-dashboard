@@ -38,13 +38,6 @@ jobs:
         uses: actions/checkout@v4
 
       # ---------------------------------------------------------
-      # QEMU
-      # ---------------------------------------------------------
-      #- name: Set up QEMU
-        #uses: docker/setup-qemu-action@v4
-        #with:
-        #  platforms: arm64
-      # ---------------------------------------------------------
       # Docker Buildx
       # ---------------------------------------------------------
       - name: Set up Docker Buildx
@@ -169,7 +162,7 @@ jobs:
         with:
           images: |
             ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_IMAGE }}
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-backend
+            ghcr.io/${{ github.repository_owner }}/${{ env.BACKEND_IMAGE }}
           tags: |
               type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
               type=sha,prefix=sha-
@@ -184,7 +177,7 @@ jobs:
         with:
           images: | 
             ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_IMAGE }}
-            ghcr.io/${{ github.repository_owner }}/task-orchestrator-frontend
+            ghcr.io/${{ github.repository_owner }}/${{ env.FRONTEND_IMAGE }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-
@@ -208,7 +201,6 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           platforms: linux/amd64
-          ##linux/arm64
 
           push: >
             ${{ github.event_name == 'push' &&
@@ -232,7 +224,6 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           platforms: linux/amd64
-          ##linux/arm64
 
           push: >
             ${{ github.event_name == 'push' &&
