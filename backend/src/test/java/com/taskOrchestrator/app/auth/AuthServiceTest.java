@@ -1,17 +1,16 @@
 package com.taskOrchestrator.app.auth;
 
-import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
 import com.taskOrchestrator.app.auth.application.AuthService;
+import com.taskOrchestrator.app.auth.application.RefreshTokenService;
 import com.taskOrchestrator.app.auth.domain.User;
 import com.taskOrchestrator.app.auth.domain.UserRepository;
+import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
+import com.taskOrchestrator.app.auth.web.AuthAccessResponse;
+import com.taskOrchestrator.app.auth.web.RegisterRequest;
 import com.taskOrchestrator.app.common.exception.DuplicateEmailException;
 import com.taskOrchestrator.app.common.exception.DuplicateUsernameException;
-import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
-import com.taskOrchestrator.app.auth.web.RegisterRequest;
 import com.taskOrchestrator.app.common.support.TestData;
 import com.taskOrchestrator.app.common.support.TestUserFactory;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -41,6 +41,9 @@ class AuthServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private AuthService authService;
@@ -67,10 +70,8 @@ class AuthServiceTest {
                     user.getRole()
             )).thenReturn(TestData.ACCESS_TOKEN);
 
-            when(jwtUtil.generateRefreshToken(
-                    user.getUsername(),
-                    user.getRole()
-            )).thenReturn(TestData.REFRESH_TOKEN);
+            when(refreshTokenService.create(user))
+                    .thenReturn(TestData.REFRESH_TOKEN);
 
             AuthAccessResponse response =
                     authService.login(
@@ -138,27 +139,16 @@ class AuthServiceTest {
 
             User user = TestUserFactory.user();
 
-            when(jwtUtil.isValidRefreshToken(
-                    TestData.REFRESH_TOKEN
-            )).thenReturn(true);
-
-            when(jwtUtil.extractUsername(
-                    TestData.REFRESH_TOKEN
-            )).thenReturn(TestData.USERNAME);
-
-            when(userRepository.findByUsername(
-                    TestData.USERNAME
-            )).thenReturn(Optional.of(user));
+            when(refreshTokenService.rotate(TestData.REFRESH_TOKEN))
+                    .thenReturn(new RefreshTokenService.RefreshTokenRotation(
+                            user,
+                            TestData.REFRESH_TOKEN
+                    ));
 
             when(jwtUtil.generateAccessToken(
                     user.getUsername(),
                     user.getRole()
             )).thenReturn(TestData.ACCESS_TOKEN);
-
-            when(jwtUtil.generateRefreshToken(
-                    user.getUsername(),
-                    user.getRole()
-            )).thenReturn(TestData.REFRESH_TOKEN);
 
             AuthAccessResponse response =
                     authService.refresh(
@@ -180,9 +170,11 @@ class AuthServiceTest {
         @DisplayName("Should reject invalid refresh token")
         void shouldRejectInvalidRefreshToken() {
 
-            when(jwtUtil.isValidRefreshToken(
-                    TestData.INVALID_REFRESH_TOKEN
-            )).thenReturn(false);
+            when(refreshTokenService.rotate(TestData.INVALID_REFRESH_TOKEN))
+                    .thenThrow(new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "Invalid refresh token"
+                    ));
 
             assertThrows(
                     ResponseStatusException.class,
@@ -196,11 +188,11 @@ class AuthServiceTest {
         @DisplayName("Should reject expired refresh token")
         void shouldRejectExpiredRefreshToken() {
 
-            when(jwtUtil.isValidRefreshToken(
-                    TestData.REFRESH_TOKEN
-            )).thenThrow(
-                    mock(ExpiredJwtException.class)
-            );
+            when(refreshTokenService.rotate(TestData.REFRESH_TOKEN))
+                    .thenThrow(new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "Refresh token has expired"
+                    ));
 
             assertThrows(
                     ResponseStatusException.class,
@@ -214,11 +206,11 @@ class AuthServiceTest {
         @DisplayName("Should reject malformed refresh token")
         void shouldRejectMalformedRefreshToken() {
 
-            when(jwtUtil.isValidRefreshToken(
-                    TestData.REFRESH_TOKEN
-            )).thenThrow(
-                    new JwtException("Bad token")
-            );
+            when(refreshTokenService.rotate(TestData.REFRESH_TOKEN))
+                    .thenThrow(new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "Invalid refresh token"
+                    ));
 
             assertThrows(
                     ResponseStatusException.class,
@@ -232,17 +224,11 @@ class AuthServiceTest {
         @DisplayName("Should reject refresh for unknown user")
         void shouldRejectRefreshForUnknownUser() {
 
-            when(jwtUtil.isValidRefreshToken(
-                    TestData.REFRESH_TOKEN
-            )).thenReturn(true);
-
-            when(jwtUtil.extractUsername(
-                    TestData.REFRESH_TOKEN
-            )).thenReturn(TestData.USERNAME);
-
-            when(userRepository.findByUsername(
-                    TestData.USERNAME
-            )).thenReturn(Optional.empty());
+            when(refreshTokenService.rotate(TestData.REFRESH_TOKEN))
+                    .thenThrow(new ResponseStatusException(
+                            HttpStatus.UNAUTHORIZED,
+                            "Invalid refresh token"
+                    ));
 
             assertThrows(
                     ResponseStatusException.class,
@@ -285,10 +271,8 @@ class AuthServiceTest {
                     any()
             )).thenReturn(TestData.ACCESS_TOKEN);
 
-            when(jwtUtil.generateRefreshToken(
-                    any(),
-                    any()
-            )).thenReturn(TestData.REFRESH_TOKEN);
+            when(refreshTokenService.create(any(User.class)))
+                    .thenReturn(TestData.REFRESH_TOKEN);
 
             AuthAccessResponse response =
                     authService.register(request);
