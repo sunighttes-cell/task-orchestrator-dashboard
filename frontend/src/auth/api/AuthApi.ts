@@ -1,46 +1,84 @@
 import axios from "axios";
+
 import { emitAuthUpdate } from "@/auth/AuthEvents";
+
 import type { RegisterUserRequest } from "@/types/auth";
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
 export const authClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "",
 });
 
+/**
+ * Refresh the authentication session.
+ * The backend uses refresh-token rotation:
+ *
+ * old refresh token
+ *        ↓
+ * /auth/refresh
+ *        ↓
+ * new access token
+ * new refresh token
+ *
+ * The old refresh token must never continue to be used.
+ */
 export async function refreshAccessToken(
   refreshToken: string | null
-): Promise<string> {
+): Promise<AuthResponse> {
+
   if (!refreshToken) {
     throw new Error("Missing refresh token");
   }
 
-  const response = await authClient.post("/auth/refresh", {
-    refreshToken,
-  });
+  const response = await authClient.post<AuthResponse>(
+    "/auth/refresh",
+    {
+      refreshToken,
+    }
+  );
 
-  const accessToken = response.data.accessToken;
-  const newRefreshToken = response.data.refreshToken ?? null;
+  const {
+    accessToken,
+    refreshToken: newRefreshToken,
+  } = response.data;
 
-  if (newRefreshToken) {
-    sessionStorage.setItem("refreshToken", newRefreshToken);
+  if (!accessToken) {
+    throw new Error("Refresh response did not contain an access token");
   }
 
+  if (!newRefreshToken) {
+    throw new Error("Refresh response did not contain a refresh token");
+  }
+
+  //Refresh-token rotation means BOTH tokens are replaced.
   sessionStorage.setItem("token", accessToken);
+  sessionStorage.setItem("refreshToken", newRefreshToken);
+
   emitAuthUpdate(accessToken, newRefreshToken);
 
-  return accessToken;
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+  };
 }
 
-export async function registerUser( registerUserRequest: RegisterUserRequest): 
-Promise<{ accessToken: string; refreshToken: string }> {
-
-    console.log("UI: Registering user with request:", registerUserRequest);
-    
-    const response = await authClient.post("/auth/register", {
+//Register a new user.
+export async function registerUser(
+  registerUserRequest: RegisterUserRequest
+): Promise<AuthResponse> {
+  const response = await authClient.post<AuthResponse>(
+    "/auth/register",
+    {
       username: registerUserRequest.username,
       email: registerUserRequest.email,
       fullName: registerUserRequest.fullName,
-      password: registerUserRequest.password
-    });
+      password: registerUserRequest.password,
+    }
+  );
 
-    return response.data;
-  }
+  return response.data;
+}

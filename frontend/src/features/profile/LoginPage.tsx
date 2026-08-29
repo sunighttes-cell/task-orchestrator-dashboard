@@ -16,31 +16,32 @@ type FormData = z.infer<typeof loginDataSchema>;
 export default function LoginPage() {
   const mutation = useAuthLogin();
   const navigate = useNavigate();
-  // const [loginErr, setLoginErr] = useState(null);
   const [loginErr, setLoginErr] = useState<string | null>(null);
   
-const {
-  register,
-  handleSubmit,
-  formState: { errors },
-} = useForm<FormData>({
-  resolver: zodResolver(loginDataSchema),
-  mode: "onChange",
-});
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(loginDataSchema),
+    mode: "onChange",
+  });
 
   const onSubmit = (data: FormData) => {
-    // Extract username and password from form inputs
-    const credentials = {
-      username: data.username,
-      password: data.password,
-    };
-
-    mutation.mutate(credentials, {
-    onSettled: () => {
-      if(!mutation.data) { 
-        setLoginErr("Unable to Login, Please Try Again!");
-      }} 
-    });
+    setLoginErr(null);
+      mutation.mutate(
+      {
+        username: data.username,
+        password: data.password,
+      },
+      {
+        onError: () => {
+          setLoginErr(
+            "Unable to login. Please check your username and password."
+          );
+        },
+      }
+    );
   };
 
   

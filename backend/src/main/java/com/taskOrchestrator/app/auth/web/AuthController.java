@@ -29,9 +29,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public AuthAccessResponse refresh(
-            @Valid @RequestBody RefreshRequest request
-    ) {
-
+            @Valid @RequestBody RefreshRequest request)
+    {
         return authService.refresh(
                 request.refreshToken()
         );
