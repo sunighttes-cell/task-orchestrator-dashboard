@@ -7,8 +7,7 @@ export function useProfileUpdate() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (profileData: UpdateUserProfileRequest) => updateProfile(profileData),
-        onSuccess: (data) => {
-            console.log("Profile updated successfully:", data);
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["profile"] });
         },
         onError: (error) => {

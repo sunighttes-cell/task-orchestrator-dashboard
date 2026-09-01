@@ -70,7 +70,6 @@ export async function connectToJobEvents({
         }
 
         const refreshToken = sessionStorage.getItem("refreshToken");
-
         if (!refreshToken) {
           throw createSseError(
             "SSE refresh failed: missing refresh token",
@@ -89,7 +88,6 @@ export async function connectToJobEvents({
       // permission to access the SSE endpoint. Do NOT attempt token refresh.
       if (response.status === 403) {
         const body = await response.text();
-
         throw createSseError(
           `SSE forbidden: ${response.status} ${body}`,
           "SSE_FORBIDDEN",
@@ -100,7 +98,6 @@ export async function connectToJobEvents({
       // Other HTTP errors
       if (!response.ok) {
         const body = await response.text();
-
         throw createSseError(
           `SSE connection failed: ${response.status} ${body}`,
           "SSE_CONNECTION_FAILED",
@@ -110,7 +107,6 @@ export async function connectToJobEvents({
 
       // Successful connection
       onOpen?.();
-
       if (!response.body) {
         throw createSseError(
           "SSE response does not contain a readable body",
@@ -118,7 +114,6 @@ export async function connectToJobEvents({
         );
       }
 
-      console.log("SSE connected");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";

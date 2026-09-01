@@ -2,17 +2,18 @@ import { useMutation } from "@tanstack/react-query";
 import { updatePassword } from "@/api/profileApi";
 import { useQueryClient } from "@tanstack/react-query";
 import type { UpdatePasswordRequest } from "@/types/profile";
+import {toast} from "sonner";
 
 export function usePasswordUpdate() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (passwordData: UpdatePasswordRequest) => updatePassword(passwordData),
-        onSuccess: (data) => {
-            console.log("Password updated successfully:", data);
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["profile"] });
         },
         onError: (error) => {
-            console.error("Error updating password:", error);
+            console.log("Error updating password: ", error)
+            toast.error("Error updating password");
         },
   });
 }

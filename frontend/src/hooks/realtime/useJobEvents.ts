@@ -1,13 +1,7 @@
 import { useEffect, useState } from "react";
 import { connectToJobEvents } from "@/features/jobs/realtime/jobEventClient";
-import type {
-  JobEvent,
-  SseConnectionStatus,
-} from "@/types/jobEvents";
-import {
-  getReconnectDelay,
-  sleep,
-} from "@/lib/realtimeConnectionDelays";
+import type {JobEvent, SseConnectionStatus,} from "@/types/jobEvents";
+import {getReconnectDelay,sleep,} from "@/lib/realtimeConnectionDelays";
 
 interface UseJobEventsOptions {
   accessToken: string | null;
@@ -117,10 +111,8 @@ export function useJobEvents({
     };
 
     void connectWithRetry();
-
     return () => {
       console.log("Cleaning up SSE effect");
-
       controller.abort();
     };
   }, [
