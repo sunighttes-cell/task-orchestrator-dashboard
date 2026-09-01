@@ -24,6 +24,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,34 +35,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * End-to-end proof of the refresh-token rotation and reuse-detection flow.
- *
- * The flow this test locks in:
- *   LOGIN
- *     ↓
- *   Token A returned
- *     ↓
- *   POST /auth/refresh with Token A
- *     ↓
- *   Token B returned
- *     ↓
- *   Token A is revoked (in DB)
- *     ↓
- *   POST /auth/refresh with Token A again
- *     ↓
- *   401
- *     ↓
- *   All the user's refresh sessions are revoked (reuse detection)
+ * LOGIN -> Token A returned -> POST /auth/refresh with Token A ->
+ * Token B returned -> Token A is revoked (in DB) ->
+ * POST /auth/refresh with Token A again -> 401 (reuse detection)
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
 class RefreshTokenRotationIntegrationTest {
-
     @Container
     static PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>("postgres:15");
-
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -88,91 +74,116 @@ class RefreshTokenRotationIntegrationTest {
     }
 
     @Test
-    @DisplayName(
-            "LOGIN → Token A → refresh(A) → Token B (A revoked) → "
-                    + "refresh(A) again → 401, all sessions revoked"
-    )
+    @DisplayName("LOGIN → Token A → refresh(A) → Token B → " + "reuse(A) → 401 → all sessions revoked")
     void shouldRotateAndRevokeOnReuse() throws Exception {
-
-        // ─── LOGIN ───
+        // 1. REGISTER USER
         register();
-        String tokenA = login();
 
-        assertThat(findByRaw(tokenA))
+        // 2.Login creates Token A and persists it in the database.
+        String tokenA = login();
+        RefreshToken tokenARecord = findByRaw(tokenA);
+        assertThat(tokenARecord)
                 .as("Token A must be persisted after login")
                 .isNotNull();
 
-        assertThat(findByRaw(tokenA).getRevokedAt())
+        assertThat(tokenARecord.getRevokedAt())
                 .as("Token A must be active immediately after login")
                 .isNull();
 
-        // ─── POST /auth/refresh with Token A → Token B returned ───
+        // 3. ROTATE TOKEN A
         String tokenB = refresh(tokenA, status().isOk());
-
         assertThat(tokenB)
-                .as("Rotation must return a new refresh token distinct from Token A")
-                .isNotEqualTo(tokenA);
-
-        // ─── Token A is revoked (in DB) ───
-        RefreshToken tokenAAfterRotation = findByRaw(tokenA);
-
-        assertThat(tokenAAfterRotation.getRevokedAt())
-                .as("Token A must be marked revoked after rotation")
+                .as("Rotation must return a new refresh token")
                 .isNotNull();
 
-        // Token B, meanwhile, should be active and persisted.
-        RefreshToken tokenBRecord = findByRaw(tokenB);
+        assertThat(tokenB)
+                .as("Token B must be different from Token A")
+                .isNotEqualTo(tokenA);
+
+        // 4. VERIFY TOKEN A WAS REVOKED
+        RefreshToken tokenAAfterRotation =
+                findByRaw(tokenA);
+
+        assertThat(tokenAAfterRotation)
+                .as("Token A must still exist in the database")
+                .isNotNull();
+
+        assertThat(tokenAAfterRotation.getRevokedAt())
+                .as("Token A must be revoked after rotation")
+                .isNotNull();
+
+        // 5. VERIFY TOKEN B IS ACTIVE
+        RefreshToken tokenBRecord =
+                findByRaw(tokenB);
 
         assertThat(tokenBRecord)
-                .as("Token B must be persisted")
+                .as("Token B must be persisted after rotation")
                 .isNotNull();
 
         assertThat(tokenBRecord.getRevokedAt())
                 .as("Token B must be active after rotation")
                 .isNull();
 
-        // ─── POST /auth/refresh with Token A again → 401 ───
+        // 6. REUSE TOKEN A
         refresh(tokenA, status().isUnauthorized());
 
-        // ─── All the user's refresh sessions must now be revoked ───
-        List<RefreshToken> allTokens =
-                refreshTokenRepository.findAll();
+        // 7. RELOAD TOKEN A FROM DATABASE
+        RefreshToken tokenAAfterReuse =
+                findByRaw(tokenA);
 
-        assertThat(allTokens)
-                .as("User must have at least Token A and Token B recorded")
+        assertThat(tokenAAfterReuse)
+                .as("Token A must remain persisted")
+                .isNotNull();
+
+        assertThat(tokenAAfterReuse.getRevokedAt())
+                .as("Token A must remain revoked")
+                .isNotNull();
+
+        // 8. RELOAD TOKEN B FROM DATABASE Token B was active before the reuse attack.
+        // Reuse detection must revoke it.
+        RefreshToken tokenBAfterReuse =
+                findByRaw(tokenB);
+
+        assertThat(tokenBAfterReuse)
+                .as("Token B must remain persisted")
+                .isNotNull();
+
+        assertThat(tokenBAfterReuse.getRevokedAt())
+                .as("Token B must be revoked after reuse of Token A"
+                )
+                .isNotNull();
+
+        // 9. VERIFY ALL REFRESH TOKENS ARE REVOKED
+        List<RefreshToken> allTokens = refreshTokenRepository.findAll();
+        assertThat(allTokens).as("At least Token A and Token B must exist")
                 .hasSizeGreaterThanOrEqualTo(2);
 
         assertThat(allTokens)
-                .as("Every refresh session for the user must be revoked "
-                        + "after reuse of Token A is detected")
+                .as("Every refresh session must be revoked "
+                                + "after refresh-token reuse is detected")
                 .allSatisfy(token ->
                         assertThat(token.getRevokedAt())
-                                .as("token id=%s must have revokedAt set",
+                                .as("Refresh token id=%s must be revoked",
                                         token.getId())
-                                .isNotNull()
-                );
+                                .isNotNull());
 
-        // Belt-and-braces: no active sessions remain.
+        // 10. BELT-AND-BRACES CHECK. There must be zero active refresh tokens remaining.
         assertThat(refreshTokenRepository.findByRevokedAtIsNull())
-                .as("There must be zero active refresh tokens after reuse")
+                .as("There must be zero active refresh sessions " + "after refresh-token reuse")
                 .isEmpty();
     }
 
     private void register() throws Exception {
-        mockMvc.perform(
-                        post("/auth/register")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(TestData.VALID_REGISTER_JSON)
-                )
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(TestData.VALID_REGISTER_JSON))
                 .andExpect(status().isOk());
     }
 
     private String login() throws Exception {
-        MvcResult result = mockMvc.perform(
-                        post("/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(TestData.VALID_LOGIN_JSON)
-                )
+        MvcResult result = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(TestData.VALID_LOGIN_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.refreshToken").exists())
                 .andReturn();
@@ -218,8 +229,18 @@ class RefreshTokenRotationIntegrationTest {
 
     /** Look up a refresh-token row by the raw JWT the client received. */
     private RefreshToken findByRaw(String rawToken) {
+        String hash;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            hash = HexFormat.of().formatHex(
+                    digest.digest(rawToken.getBytes(StandardCharsets.UTF_8))
+            );
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
+
         return refreshTokenRepository
-                .findByTokenHash(hash(rawToken))
+                .findByTokenHash(hash)
                 .orElse(null);
     }
 

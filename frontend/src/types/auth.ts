@@ -32,6 +32,7 @@ export type AuthContextType = {
   register: (data: { accessToken: string; refreshToken: string }) => void;
   login: (data: { accessToken: string; refreshToken: string }) => void;
   logout: () => void;
+  logoutAll: () => Promise<void>;
   updateAuthentication: (token: string | null) => void;
 };
 

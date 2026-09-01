@@ -33,7 +33,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Import(JwtAuthFilter.class)
 public class SecurityConfig implements WebMvcConfigurer {
-
     private final ObjectMapper objectMapper;
     private final StorageProperties storageProperties;
 
@@ -125,84 +124,34 @@ public class SecurityConfig implements WebMvcConfigurer {
     }
 
     private AuthenticationEntryPoint unauthorizedEntryPoint() {
-
         return (request, response, ex) -> {
-
             if (response.isCommitted()) {
                 return;
             }
 
-            response.setStatus(
-                    HttpStatus.UNAUTHORIZED.value()
-            );
-
-            response.setContentType(
-                    MediaType.APPLICATION_JSON_VALUE
-            );
-
-            Map<String, Object> body =
-                    new LinkedHashMap<>();
-
-            body.put(
-                    "timestamp",
-                    Instant.now().toString()
-            );
-
-            body.put(
-                    "message",
-                    "Authentication required"
-            );
-
-            body.put(
-                    "code",
-                    "UNAUTHORIZED"
-            );
-
-            objectMapper.writeValue(
-                    response.getWriter(),
-                    body
-            );
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("timestamp", Instant.now().toString());
+            body.put("message", "Authentication required");
+            body.put("code", "UNAUTHORIZED");
+            objectMapper.writeValue(response.getWriter(), body);
         };
     }
 
     private AccessDeniedHandler forbiddenAccessDeniedHandler() {
-
         return (request, response, ex) -> {
-
             if (response.isCommitted()) {
                 return;
             }
 
-            response.setStatus(
-                    HttpStatus.FORBIDDEN.value()
-            );
-
-            response.setContentType(
-                    MediaType.APPLICATION_JSON_VALUE
-            );
-
-            Map<String, Object> body =
-                    new LinkedHashMap<>();
-
-            body.put(
-                    "timestamp",
-                    Instant.now().toString()
-            );
-
-            body.put(
-                    "message",
-                    "Access denied"
-            );
-
-            body.put(
-                    "code",
-                    "FORBIDDEN"
-            );
-
-            objectMapper.writeValue(
-                    response.getWriter(),
-                    body
-            );
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("timestamp", Instant.now().toString());
+            body.put("message", "Access denied");
+            body.put("code", "FORBIDDEN");
+            objectMapper.writeValue(response.getWriter(), body);
         };
     }
 }

@@ -1,75 +1,72 @@
 import axios from "axios";
-
 import { emitAuthUpdate } from "@/auth/AuthEvents";
-
 import type { RegisterUserRequest } from "@/types/auth";
-
-export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-}
 
 export const authClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "",
 });
 
-/**
- * Refresh the authentication session.
- * The backend uses refresh-token rotation:
- *
- * old refresh token
- *        ↓
- * /auth/refresh
- *        ↓
- * new access token
- * new refresh token
- *
- * The old refresh token must never continue to be used.
- */
-export async function refreshAccessToken(
-  refreshToken: string | null
-): Promise<AuthResponse> {
+//Response returned by:
+//POST /auth/login
+//POST /auth/register
+//POST /auth/refresh
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+}
 
+//Login
+export async function loginUser(
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await authClient.post<AuthResponse>(
+    "/auth/login",
+    {
+      username,
+      password,
+    }
+  );
+  return response.data;
+}
+
+//Refresh authentication. Backend rotates refresh token.
+//BOTH returned values must replace existing values in sessionStorage.
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<AuthResponse> {
   if (!refreshToken) {
     throw new Error("Missing refresh token");
   }
-
   const response = await authClient.post<AuthResponse>(
     "/auth/refresh",
-    {
-      refreshToken,
-    }
+    { refreshToken },
   );
 
-  const {
-    accessToken,
-    refreshToken: newRefreshToken,
-  } = response.data;
+  const authResponse = response.data;
+  sessionStorage.setItem(
+    "token",
+    authResponse.accessToken,
+  );
 
-  if (!accessToken) {
-    throw new Error("Refresh response did not contain an access token");
-  }
+  sessionStorage.setItem(
+    "refreshToken",
+    authResponse.refreshToken,
+  );
 
-  if (!newRefreshToken) {
-    throw new Error("Refresh response did not contain a refresh token");
-  }
+  emitAuthUpdate(
+    authResponse.accessToken,
+    authResponse.refreshToken,
+  );
 
-  //Refresh-token rotation means BOTH tokens are replaced.
-  sessionStorage.setItem("token", accessToken);
-  sessionStorage.setItem("refreshToken", newRefreshToken);
-
-  emitAuthUpdate(accessToken, newRefreshToken);
-
-  return {
-    accessToken,
-    refreshToken: newRefreshToken,
-  };
+  return authResponse;
 }
 
-//Register a new user.
+//Register
 export async function registerUser(
   registerUserRequest: RegisterUserRequest
 ): Promise<AuthResponse> {
+
   const response = await authClient.post<AuthResponse>(
     "/auth/register",
     {
@@ -81,4 +78,26 @@ export async function registerUser(
   );
 
   return response.data;
+}
+
+//Logout the current refresh-token session. POST /auth/logout
+//The backend validates refresh token belongs to the authenticated user.
+export async function logoutUser(
+  refreshToken: string | null
+): Promise<void> {
+  if (!refreshToken) {
+    return;
+  }
+  await authClient.post(
+    "/auth/logout",
+    {
+      refreshToken,
+    }
+  );
+}
+
+//Logout all sessions for authenticated user.
+//POST /auth/logout-all invalidates every active refresh token.
+export async function logoutAllUserSessions(): Promise<void> {
+  await authClient.post("/auth/logout-all");
 }

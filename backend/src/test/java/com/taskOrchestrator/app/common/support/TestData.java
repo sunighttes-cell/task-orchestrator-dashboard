@@ -30,8 +30,10 @@ public final class TestData {
     //JWT // These are only placeholder values for mocked tests. Integration tests should generate real JWTs using JwtUtil.
     public static final String ACCESS_TOKEN = "mock-access-token";
     public static final String REFRESH_TOKEN = "mock-refresh-token";
+    public static final String NEW_REFRESH_TOKEN = "new-access-token";
     public static final String INVALID_REFRESH_TOKEN = "invalid-refresh-token";
     public static final String INVALID_ACCESS_TOKEN = "invalid-access-token";
+
 
     //Register Requests
     public static final String VALID_REGISTER_JSON = """

@@ -6,6 +6,7 @@ import com.taskOrchestrator.app.auth.domain.User;
 import com.taskOrchestrator.app.auth.infrastructure.jwt.JwtUtil;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,239 +16,193 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 
 @Service
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
     private final JwtUtil jwtUtil;
 
     public RefreshTokenService(
             RefreshTokenRepository refreshTokenRepository,
+            @Value("${jwt.refresh-expiration}")
+            long refreshExpiration,
             JwtUtil jwtUtil
     ) {
         this.refreshTokenRepository = refreshTokenRepository;
+        this.refreshExpiration = refreshExpiration;
         this.jwtUtil = jwtUtil;
     }
 
-    @Transactional
-    public String create(User user) {
+    public RefreshToken create(User user, String rawRefreshToken) {
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUser(user);
+        refreshToken.setTokenHash(hashToken(rawRefreshToken));
+        refreshToken.setCreatedAt(Instant.now());
+        refreshToken.setExpiresAt(
+                jwtUtil.extractExpiration(rawRefreshToken).toInstant()
+        );
 
-        if (user == null) {
-            throw new IllegalArgumentException(
-                    "User cannot be null"
+        return refreshTokenRepository.save(refreshToken);
+    }
+
+    public RefreshToken validate(String rawRefreshToken) {
+        try {
+            if (!jwtUtil.isValidRefreshToken(rawRefreshToken)) {
+                throw new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Invalid refresh token"
+                );
+            }
+        } catch (ExpiredJwtException ex) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token has expired"
+            );
+        } catch (JwtException | IllegalArgumentException ex) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid refresh token"
             );
         }
 
-        String rawToken =
+        String tokenHash = hashToken(rawRefreshToken);
+        RefreshToken storedToken =
+                refreshTokenRepository
+                        .findByTokenHash(tokenHash)
+                        .orElseThrow(() ->
+                                new ResponseStatusException(
+                                        HttpStatus.UNAUTHORIZED,
+                                        "Invalid refresh token"
+                                )
+                        );
+
+        if (storedToken.getRevokedAt() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token has been revoked"
+            );
+        }
+
+        if (storedToken.getExpiresAt().isBefore(Instant.now())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token has expired"
+            );
+        }
+
+        if (storedToken.getUser() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid refresh token"
+            );
+        }
+        return storedToken;
+    }
+
+    @Transactional
+    public String rotate(String rawRefreshToken) {
+
+        // 1. Validate the existing refresh token.
+        RefreshToken existingToken = validate(rawRefreshToken);
+
+        // 2. Revoke the old refresh token.
+        existingToken.setRevokedAt(Instant.now());
+        refreshTokenRepository.save(existingToken);
+
+        // 3. Generate a completely new refresh JWT.
+        User user = existingToken.getUser();
+
+        String newRawRefreshToken =
                 jwtUtil.generateRefreshToken(
                         user.getUsername(),
                         user.getRole()
                 );
 
-        String tokenHash = hashToken(rawToken);
-        Instant now = Instant.now();
-        RefreshToken refreshToken = new RefreshToken();
+        // 4. Hash the new token before storing it.
+        String newTokenHash = hashToken(newRawRefreshToken);
 
-        refreshToken.setUser(user);
-        refreshToken.setTokenHash(tokenHash);
-        refreshToken.setCreatedAt(now);
-
-        refreshToken.setExpiresAt(
-                jwtUtil.extractExpiration(
-                        rawToken
-                ).toInstant()
+        // 5. Create the new database record.
+        RefreshToken newRefreshToken = new RefreshToken();
+        newRefreshToken.setUser(user);
+        newRefreshToken.setTokenHash(newTokenHash);
+        newRefreshToken.setCreatedAt(Instant.now());
+        newRefreshToken.setExpiresAt(
+                Instant.now().plusMillis(refreshExpiration)
         );
 
-        refreshToken.setRevokedAt(null);
-        refreshTokenRepository.save(refreshToken);
-        return rawToken;
+        // 6. Persist the new refresh token.
+        refreshTokenRepository.save(newRefreshToken);
+
+        // 7. Return the RAW token.
+        // The database only receives the hash.
+        // The frontend receives the actual JWT.
+        return newRawRefreshToken;
     }
 
-    @Transactional(readOnly = true)
-    public RefreshToken validate(String rawToken) {
-
-        if (rawToken == null || rawToken.isBlank()) {
-            throw unauthorized(
-                    "Refresh token is required"
-            );
+    public void revoke(RefreshToken refreshToken) {
+        if (refreshToken.getRevokedAt() == null) {
+            refreshToken.setRevokedAt(Instant.now());
+            refreshTokenRepository.save(refreshToken);
         }
-
-        try {
-
-            if (!jwtUtil.isValidRefreshToken(rawToken)) {
-                throw unauthorized(
-                        "Invalid refresh token"
-                );
-            }
-
-        } catch (ExpiredJwtException ex) {
-
-            throw unauthorized(
-                    "Refresh token has expired"
-            );
-
-        } catch (JwtException | IllegalArgumentException ex) {
-
-            throw unauthorized(
-                    "Invalid refresh token"
-            );
-        }
-
-        String tokenHash = hashToken(rawToken);
-
-        RefreshToken refreshToken = refreshTokenRepository
-                        .findByTokenHash(tokenHash)
-                        .orElseThrow(() ->
-                                unauthorized("Invalid refresh token")
-                        );
-
-        if (refreshToken.getRevokedAt() != null) {
-
-            throw unauthorized(
-                    "Refresh token has been revoked"
-            );
-        }
-
-        if (refreshToken.getExpiresAt()
-                .isBefore(Instant.now())) {
-
-            throw unauthorized(
-                    "Refresh token has expired"
-            );
-        }
-
-        return refreshToken;
-    }
-
-    @Transactional(noRollbackFor = ResponseStatusException.class)
-    public RefreshTokenRotation rotate(
-            String rawToken
-    ) {
-
-        if (rawToken == null || rawToken.isBlank()) {
-            throw unauthorized(
-                    "Refresh token is required"
-            );
-        }
-
-        if (detectReuse(rawToken)) {
-            RefreshToken revokedToken = findByRawToken(rawToken);
-
-            if (revokedToken != null) {
-                revokeAllForUser(revokedToken.getUser());
-            }
-
-            throw unauthorized("Refresh token reuse detected");
-        }
-
-        RefreshToken existingToken = validate(rawToken);
-        User user = existingToken.getUser();
-
-        revoke(existingToken);
-
-        String newRefreshToken = create(user);
-
-        return new RefreshTokenRotation(
-                user,
-                newRefreshToken
-        );
     }
 
     @Transactional
-    public void revoke(
-            RefreshToken refreshToken
-    ) {
+    public void revokeAllForUser(User user) {
+        List<RefreshToken> activeTokens =
+                refreshTokenRepository
+                        .findByUserAndRevokedAtIsNull(user);
+        Instant revokedAt = Instant.now();
 
-        if (refreshToken == null) {
-            return;
+        for (RefreshToken token : activeTokens) {
+            token.setRevokedAt(revokedAt);
         }
-
-        if (refreshToken.getRevokedAt() != null) {
-            return;
-        }
-
-        refreshToken.setRevokedAt(Instant.now());
-
-        refreshTokenRepository.save(refreshToken);
-    }
-
-    @Transactional
-    public void revokeAllForUser(
-            User user
-    ) {
-
-        if (user == null) {
-            return;
-        }
-
-        List<RefreshToken> tokens =
-                refreshTokenRepository.findByUser(user);
-
-        Instant now = Instant.now();
-
-        for (RefreshToken token : tokens) {
-
-            if (token.getRevokedAt() == null) {
-
-                token.setRevokedAt(now);
-            }
-        }
-
-        refreshTokenRepository.saveAll(tokens);
+        refreshTokenRepository.saveAll(activeTokens);
     }
 
     @Transactional(readOnly = true)
-    public boolean detectReuse(
-            String rawToken
-    ) {
-
-        if (rawToken == null || rawToken.isBlank()) {
-            return false;
-        }
-
-        String tokenHash =
-                hashToken(rawToken);
-
+    public boolean detectReuse(String rawRefreshToken) {
+        String tokenHash = hashToken(rawRefreshToken);
         return refreshTokenRepository
                 .findByTokenHash(tokenHash)
-                .map(token ->
-                        token.getRevokedAt() != null
-                )
+                .map(token -> token.getRevokedAt() != null)
                 .orElse(false);
     }
 
-    private RefreshToken findByRawToken(
-            String rawToken
-    ) {
-
-        String tokenHash =
-                hashToken(rawToken);
-
+    public RefreshToken findByRawToken(String rawToken) {
+        String tokenHash = hashToken(rawToken);
         return refreshTokenRepository
                 .findByTokenHash(tokenHash)
                 .orElse(null);
     }
 
-    private String hashToken(String rawToken
-    ) {
+    public RefreshToken findByRawTokenForReuse(String rawToken) {
+        String tokenHash = hashToken(rawToken);
+        return refreshTokenRepository
+                .findByTokenHash(tokenHash)
+                .orElse(null);
+    }
+
+    private String hashToken(String token) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest =
+                    MessageDigest.getInstance("SHA-256");
+
             byte[] hash = digest.digest(
-                            rawToken.getBytes(StandardCharsets.UTF_8));
+                            token.getBytes(StandardCharsets.UTF_8));
 
-            StringBuilder hex = new StringBuilder(hash.length * 2);
-
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString();
+            return HexFormat.of().formatHex(hash);
 
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException(
-                    "SHA-256 algorithm is not available", ex);
+                    "SHA-256 algorithm is not available",
+                    ex
+            );
         }
     }
 

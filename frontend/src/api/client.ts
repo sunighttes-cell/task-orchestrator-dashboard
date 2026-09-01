@@ -1,62 +1,34 @@
 import axios, {
-  AxiosError,
-  type AxiosRequestConfig,
+  type AxiosError,
+  type InternalAxiosRequestConfig,
 } from "axios";
-
 import { emitUnauthorized } from "@/auth/AuthEvents";
 import { refreshAccessToken } from "@/auth/api/AuthApi";
 
+//Centralized API client.
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "",
 });
 
-/**
- * Axios config extended with our retry flag.
- *
- * This prevents an original request from continuously
- * retrying if the refreshed access token also receives
- * a 401.
- */
-interface RetryableRequestConfig extends AxiosRequestConfig {
+//Extend Axios request configuration to track if a request has already been retried.
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
-}
+};
 
-/**
- * Add the current access token to every API request.
- */
-apiClient.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem("token");
-
-  if (token) {
-    config.headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  return config;
-});
-
-/**
- * Refresh state.
- *
- * Only ONE refresh request should happen at a time.
- */
-let isRefreshing = false;
-
-/**
- * Requests waiting for the refresh operation to finish.
- */
+ //A request waiting for the refresh operation to finish.
 type PendingRequest = {
-  resolve: (token: string) => void;
+  resolve: (accessToken: string) => void;
   reject: (error: Error) => void;
 };
 
+//Refresh state.
+let isRefreshing = false;
 let pendingRequests: PendingRequest[] = [];
 
-/**
- * Resolve or reject all requests waiting for token refresh.
- */
+//Resolve or reject all requests waiting for token refresh.
 function processQueue(
   error: Error | null,
-  token: string | null
+  accessToken: string | null
 ): void {
 
   pendingRequests.forEach((pendingRequest) => {
@@ -66,153 +38,124 @@ function processQueue(
       return;
     }
 
-    if (token) {
-      pendingRequest.resolve(token);
+    if (accessToken) {
+      pendingRequest.resolve(accessToken);
     }
   });
 
   pendingRequests = [];
 }
 
-/**
- * Handle authentication failures.
- */
+//Add access token to every authenticated API request.
+apiClient.interceptors.request.use(
+  (config) => {
+
+    const token = sessionStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+//Handle API responses. 401: Access token may have expired.
+//Attempt: request -> 401 -> refresh token -> new access token + new refresh token -> retry original request
+//403: Do not attempt refresh. A 403 means authentication succeeded but authorization was denied.
 apiClient.interceptors.response.use(
   (response) => response,
-
   async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
 
-    const originalRequest =
-      error.config as RetryableRequestConfig | undefined;
-
-    /*
-     * If Axios does not provide a request configuration,
-     * there is nothing we can safely retry.
-     */
+    //If Axios does not provide the original request,
+    //there is nothing we can retry.
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    /*
-     * 403 means the user is authenticated but does not
-     * have permission.
-     *
-     * Do NOT attempt token refresh.
-     */
+    //Never attempt token refresh for forbidden responses.
     if (error.response?.status === 403) {
       return Promise.reject(error);
     }
 
-    /*
-     * Only handle 401 responses.
-     */
+    //Only handle 401 responses.
     if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
-    /*
-     * Prevent infinite refresh loops.
-     */
+    //Prevent an infinite retry loop.
     if (originalRequest._retry) {
-      emitUnauthorized();
       return Promise.reject(error);
     }
 
-    /*
-     * If another request is already refreshing the token,
-     * wait for that refresh to finish.
-     */
+    //Mark this request so it can only be retried once.
+    originalRequest._retry = true;
+
+    //If another request is already refreshing the token,
+    //place this request into the queue.
     if (isRefreshing) {
 
       return new Promise((resolve, reject) => {
 
         pendingRequests.push({
+
           resolve: (newAccessToken: string) => {
-
-            originalRequest._retry = true;
-
-            originalRequest.headers =
-              originalRequest.headers ?? {};
 
             originalRequest.headers.Authorization =
               `Bearer ${newAccessToken}`;
 
-            resolve(apiClient(originalRequest));
+            resolve(
+              apiClient(originalRequest)
+            );
           },
 
           reject,
         });
-
       });
     }
 
-    /*
-     * This request becomes responsible for refreshing.
-     */
-    originalRequest._retry = true;
+    //Responsible for refreshing authentication.
     isRefreshing = true;
-
-    const refreshToken =
-      sessionStorage.getItem("refreshToken");
-
+    const refreshToken = sessionStorage.getItem("refreshToken");
     try {
-
       if (!refreshToken) {
         throw new Error("Missing refresh token");
       }
 
-      /*
-       * Backend returns a NEW access token AND a NEW
-       * refresh token.
-       */
-      const tokenResponse =
-        await refreshAccessToken(refreshToken);
+      //Backend rotates BOTH tokens.
+      const { accessToken } = await refreshAccessToken(refreshToken);
 
-      const newAccessToken =
-        tokenResponse.accessToken;
+      //Resolve all requests waiting for refresh.
+      processQueue(
+        null,
+        accessToken
+      );
 
-      /*
-       * The refresh function already stored both tokens.
-       */
-
-      processQueue(null, newAccessToken);
-
-      /*
-       * Retry the original request using the new
-       * access token.
-       */
-      originalRequest.headers =
-        originalRequest.headers ?? {};
-
+      //Retry the original request with the new access token.
       originalRequest.headers.Authorization =
-        `Bearer ${newAccessToken}`;
+        `Bearer ${accessToken}`;
 
       return apiClient(originalRequest);
 
     } catch (refreshError) {
-
       const normalizedError =
-        refreshError instanceof Error
-          ? refreshError
-          : new Error("Token refresh failed");
+        refreshError instanceof Error ? refreshError : new Error("Token refresh failed");
 
-      /*
-       * Every request waiting for the refresh must fail.
-       */
-      processQueue(normalizedError, null);
+      //Reject all queued requests.
+      processQueue(
+        normalizedError,
+        null
+      );
 
-      /*
-       * Refresh failure means the authentication session
-       * can no longer be trusted.
-       *
-       * AuthContext will clear the session and redirect.
-       */
+      //This means the refresh token itself failed.
+      //Possible backend reasons: refresh token expired, refresh token revoked, refresh token reuse detected
+      // invalid refresh token. The backend may have revoked all sessions in the token-reuse case.
       emitUnauthorized();
 
       return Promise.reject(normalizedError);
-
     } finally {
-
       isRefreshing = false;
     }
   }

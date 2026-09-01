@@ -1,32 +1,14 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-
-import {
-  subscribeToUnauthorized,
-  subscribeToAuthUpdate,
-} from "@/auth/AuthEvents";
-
+import { createContext, useContext, useEffect, useState,} from "react";
+import { subscribeToUnauthorized, subscribeToAuthUpdate,} from "@/auth/AuthEvents";
+import { logoutUser, logoutAllUserSessions,} from "@/auth/api/AuthApi";
 import { useQueryClient } from "@tanstack/react-query";
-
 import { decodeUser } from "@/test/utils/jwt";
+import type { CurrentUser, AuthContextType, AuthState,} from "@/types/auth";
 
-import type {
-  CurrentUser,
-  AuthContextType,
-  AuthState,
-} from "@/types/auth";
+const AuthContext = createContext<AuthContextType | null>(null);
 
-const AuthContext =
-  createContext<AuthContextType | null>(null);
-
-function decodeUserSafe(
-  token: string
-): CurrentUser | null {
-
+//Safely decode the access token.
+function decodeUserSafe( token: string): CurrentUser | null {
   try {
     return decodeUser(token);
   } catch {
@@ -34,29 +16,17 @@ function decodeUserSafe(
   }
 }
 
-function clearStoredAuthentication(): void {
-
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("refreshToken");
-}
-
+//Load authentication state from sessionStorage.
 function getStoredAuthState(): AuthState {
+  const token = sessionStorage.getItem("token");
+  const refreshToken = sessionStorage.getItem("refreshToken");
+  const user = token ? decodeUserSafe(token) : null;
 
-  const token =
-    sessionStorage.getItem("token");
-
-  const refreshToken =
-    sessionStorage.getItem("refreshToken");
-
-  const user =
-    token
-      ? decodeUserSafe(token)
-      : null;
-
+  //If the access token exists but cannot be decoded,
+  //clear the complete authentication state.
   if (token && !user) {
-
-    clearStoredAuthentication();
-
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("refreshToken");
     return {
       token: null,
       refreshToken: null,
@@ -72,62 +42,56 @@ function getStoredAuthState(): AuthState {
 }
 
 export function AuthProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+  children,}: { children: React.ReactNode;}) {
+  const queryClient = useQueryClient();
+  const [auth, setAuth] = useState<AuthState>( 
+    () => getStoredAuthState());
 
-  const queryClient =
-    useQueryClient();
-
-  const [auth, setAuth] =
-    useState<AuthState>(
-      () => getStoredAuthState()
-    );
-
-  /**
-   * Update authentication state.
-   *
-   * Access token and refresh token are treated as
-   * one authentication pair.
-   */
+  //Update React authentication state.
   const setAuthenticatedState = (
     accessToken: string | null,
     refreshToken: string | null
   ): void => {
 
-    if (!accessToken || !refreshToken) {
-
-      clearStoredAuthentication();
-
+    if (!accessToken) {
       setAuth({
         token: null,
         refreshToken: null,
         user: null,
       });
-
       return;
     }
 
-    const user =
-      decodeUserSafe(accessToken);
-
+    const user = decodeUserSafe(accessToken);
     if (!user) {
-
-      clearStoredAuthentication();
-
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("refreshToken");
       setAuth({
         token: null,
         refreshToken: null,
         user: null,
       });
-
       return;
     }
 
-    /*
-     * Keep storage synchronized with React state.
-     */
+    setAuth({
+      token: accessToken,
+      refreshToken,
+      user,
+    });
+  };
+
+  //Login. Stores both access and refresh tokens.
+  const login = (data: {
+    accessToken: string;
+    refreshToken: string;
+  }): void => {
+
+    const {
+      accessToken,
+      refreshToken,
+    } = data;
+
     sessionStorage.setItem(
       "token",
       accessToken
@@ -138,106 +102,92 @@ export function AuthProvider({
       refreshToken
     );
 
-    setAuth({
-      token: accessToken,
-      refreshToken,
-      user,
-    });
+    setAuthenticatedState(
+      accessToken,
+      refreshToken
+    );
   };
 
-  /**
-   * Register uses the same authentication flow as login.
-   */
+  //Registration automatically authenticates
+  //the newly created user.
   const register = (data: {
     accessToken: string;
     refreshToken: string;
   }): void => {
-
     login(data);
   };
 
-  /**
-   * Store a newly authenticated session.
-   */
-  const login = (data: {
-    accessToken: string;
-    refreshToken: string;
-  }): void => {
-
-    setAuthenticatedState(
-      data.accessToken,
-      data.refreshToken
-    );
-  };
-
-  /**
-   * Clear local authentication state.
-   */
-  const logout = (): void => {
-
-    clearStoredAuthentication();
-
+  //Clear local authentication state.
+  //This is intentionally separate from the API logout call.
+  const clearAuthentication = (): void => {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("refreshToken");
     setAuth({
       token: null,
       refreshToken: null,
       user: null,
     });
-
-    /*
-     * Clear all React Query cached data.
-     *
-     * This is important so User A's data cannot remain
-     * visible after User A logs out and User B logs in.
-     */
+    //Remove cached authenticated data. Prevents the previous user's jobs/dashboard
+    //from appearing after logout/login as another user.
     queryClient.clear();
-
-    /*
-     * If you have a Zustand store containing filters,
-     * dashboard state, etc., reset that store here as well.
-     *
-     * Do NOT add a reset call until we know the actual
-     * Zustand store API.
-     */
   };
 
-  /**
-   * Update only the access token while retaining the
-   * current refresh token.
-   *
-   * Kept for compatibility with existing consumers.
-   */
+  //Logout the CURRENT refresh-token session.
+  //Backend: POST /auth/logout
+  const logout = async (): Promise<void> => {
+    const refreshToken = sessionStorage.getItem("refreshToken");
+    try {
+      if (refreshToken) {
+        await logoutUser(refreshToken);
+      }
+    } catch (error) {
+      //Logout should still clear local credentials, even if backend request fails.
+      //Examples: backend unavailable, token already expired, token already revoked
+      console.warn(
+        "Backend logout failed:",
+        error
+      );
+
+    } finally {
+      clearAuthentication();
+    }
+  };
+
+  //Logout ALL sessions belonging to the user.
+  //Backend: POST /auth/logout-all
+  const logoutAll = async (): Promise<void> => {
+    try {
+      await logoutAllUserSessions();
+    } catch (error) {
+      console.warn(
+        "Backend logout-all failed:",
+        error
+      );
+    } finally {
+      clearAuthentication();
+    }
+  };
+
+  //Update authentication after token refresh.
   const updateAuthentication = (
-    token: string | null
+    accessToken: string | null
   ): void => {
-
-    if (!token) {
-      logout();
-      return;
-    }
-
-    const refreshToken =
-      auth.refreshToken ??
-      sessionStorage.getItem("refreshToken");
-
-    if (!refreshToken) {
-      logout();
-      return;
-    }
-
+    const refreshToken = sessionStorage.getItem("refreshToken");
     setAuthenticatedState(
-      token,
+      accessToken,
       refreshToken
     );
   };
 
-  /**
-   * Subscribe to global authentication events.
-   */
+  //Authentication events.
   useEffect(() => {
-
+    //Axios interceptor calls emitUnauthorized() when refresh authentication fails.
     const unsubscribeUnauthorized =
-      subscribeToUnauthorized(logout);
+      subscribeToUnauthorized(
+        clearAuthentication
+      );
 
+    //Token rotation calls emitAuthUpdate().
     const unsubscribeAuthUpdate =
       subscribeToAuthUpdate(
         (
@@ -245,9 +195,18 @@ export function AuthProvider({
           refreshToken
         ) => {
 
-          if (!accessToken || !refreshToken) {
-            logout();
-            return;
+          if (accessToken) {
+            sessionStorage.setItem(
+              "token",
+              accessToken
+            );
+          }
+
+          if (refreshToken) {
+            sessionStorage.setItem(
+              "refreshToken",
+              refreshToken
+            );
           }
 
           setAuthenticatedState(
@@ -258,11 +217,9 @@ export function AuthProvider({
       );
 
     return () => {
-
       unsubscribeUnauthorized();
       unsubscribeAuthUpdate();
     };
-
   }, []);
 
   return (
@@ -272,25 +229,22 @@ export function AuthProvider({
         register,
         login,
         logout,
+        logoutAll,
         updateAuthentication,
         isAuthenticated: !!auth.token,
-      }}
-    >
+      }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-
   const ctx =
     useContext(AuthContext);
-
   if (!ctx) {
     throw new Error(
       "useAuth must be used within AuthProvider"
     );
   }
-
   return ctx;
 }

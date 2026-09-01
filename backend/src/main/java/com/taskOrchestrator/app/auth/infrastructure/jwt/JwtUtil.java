@@ -25,7 +25,6 @@ public class JwtUtil {
             @Value("${jwt.access-expiration}") long accessExpiration,
             @Value("${jwt.refresh-expiration}") long refreshExpiration
     ) {
-
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "JWT_SECRET must be configured"
@@ -93,7 +92,6 @@ public class JwtUtil {
 
         return User.Role.valueOf(role.toString());
     }
-
 
     //Extracts the expiration date from a JWT.
     public Date extractExpiration(String token) {

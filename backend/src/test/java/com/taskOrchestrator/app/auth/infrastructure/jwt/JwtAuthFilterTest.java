@@ -21,7 +21,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthFilterTest {
-
     @Mock
     private JwtUtil jwtUtil;
 
@@ -33,9 +32,7 @@ class JwtAuthFilterTest {
 
     @BeforeEach
     void setUp() {
-
         objectMapper = new ObjectMapper();
-
         jwtAuthFilter = new JwtAuthFilter(
                 jwtUtil,
                 objectMapper
@@ -324,18 +321,10 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    void shouldSkipUploadedFiles()
-            throws Exception {
-
-        MockHttpServletRequest request =
-                new MockHttpServletRequest();
-
-        request.setServletPath(
-                "/uploads/avatar.png"
-        );
-
-        MockHttpServletResponse response =
-                new MockHttpServletResponse();
+    void shouldSkipUploadedFiles() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setServletPath("/uploads/avatar.png");
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
         jwtAuthFilter.doFilter(
                 request,
@@ -343,9 +332,7 @@ class JwtAuthFilterTest {
                 filterChain
         );
 
-        verify(filterChain)
-                .doFilter(request, response);
-
+        verify(filterChain).doFilter(request, response);
         verifyNoInteractions(jwtUtil);
     }
 }
