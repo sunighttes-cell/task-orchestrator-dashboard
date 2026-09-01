@@ -41,8 +41,8 @@ const UpdateProfileModal = ({ onClose }: { onClose: () => void}) => {
         navigate('/profile');
         onClose();}
     catch (error) {
-        console.log(error);
-        toast.error("Something went wrong");}
+        console.log("Something went wrong", error);
+        toast.error("Something went wrong")}
     finally {
         setIsLoading(false);
     }};

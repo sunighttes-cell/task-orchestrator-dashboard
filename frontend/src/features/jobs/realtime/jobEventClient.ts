@@ -11,12 +11,39 @@ interface JobEventClientOptions {
   signal?: AbortSignal;
 }
 
-export async function connectToJobEvents({ url, accessToken, onEvent, onOpen, onError,
+type SseError = Error & {
+  code?: string;
+  status?: number;
+};
+
+function createSseError(
+  message: string,
+  code?: string,
+  status?: number,
+): SseError {
+  const error = new Error(message) as SseError;
+
+  if (code) {
+    error.code = code;
+  }
+
+  if (status !== undefined) {
+    error.status = status;
+  }
+
+  return error;
+}
+
+export async function connectToJobEvents({
+  url,
+  accessToken,
+  onEvent,
+  onOpen,
+  onError,
   signal,
 }: JobEventClientOptions): Promise<void> {
-
   let currentAccessToken = accessToken;
-  let retryCount = 0;
+  let hasRetriedAfter401 = false;
 
   while (true) {
     try {
@@ -29,41 +56,69 @@ export async function connectToJobEvents({ url, accessToken, onEvent, onOpen, on
         signal,
       });
 
-      if (!response.ok) {
-        if (response.status === 401 && retryCount === 0) {
-          const refreshToken = sessionStorage.getItem("refreshToken");
-          if (!refreshToken) {
-            throw new Error("SSE refresh failed: missing refresh token");
-          }
-
-          retryCount += 1;
-          currentAccessToken = await refreshAccessToken(refreshToken);
-          continue;
+      // Unauthorized: Access token may have expired. Get current refresh token
+      // from sessionStorage and let refreshAccessToken() handle:
+      // POST /auth/refresh: old refresh token -> revoked
+      // Only one refresh attempt is allowed for this SSE connection.
+      if (response.status === 401) {
+        if (hasRetriedAfter401) {
+          throw createSseError(
+            "SSE connection unauthorized after token refresh",
+            "SSE_UNAUTHORIZED",
+            401,
+          );
         }
 
-        if (response.status === 403) {
-          const body = await response.text();
-          const forbiddenError = new Error(`SSE forbidden: ${response.status} ${body}`) as Error & { code?: string };
-          forbiddenError.code = "SSE_FORBIDDEN";
-          throw forbiddenError;
+        const refreshToken = sessionStorage.getItem("refreshToken");
+        if (!refreshToken) {
+          throw createSseError(
+            "SSE refresh failed: missing refresh token",
+            "SSE_REFRESH_FAILED",
+            401,
+          );
         }
 
-        const body = await response.text();
-        console.error({status: response.status, body,});
-        throw new Error(`SSE connection failed: ${response.status} ${body}`,);
+        hasRetriedAfter401 = true;
+        const refreshed =  await refreshAccessToken(refreshToken);
+        currentAccessToken = refreshed.accessToken;
+        continue;
       }
 
-      onOpen?.();
+      // Forbidden: 403 means authentication may be valid but user does not have
+      // permission to access the SSE endpoint. Do NOT attempt token refresh.
+      if (response.status === 403) {
+        const body = await response.text();
+        throw createSseError(
+          `SSE forbidden: ${response.status} ${body}`,
+          "SSE_FORBIDDEN",
+          403,
+        );
+      }
 
+      // Other HTTP errors
+      if (!response.ok) {
+        const body = await response.text();
+        throw createSseError(
+          `SSE connection failed: ${response.status} ${body}`,
+          "SSE_CONNECTION_FAILED",
+          response.status,
+        );
+      }
+
+      // Successful connection
+      onOpen?.();
       if (!response.body) {
-        throw new Error("SSE response does not contain a readable body");
-      } else console.log("SSE connected");
+        throw createSseError(
+          "SSE response does not contain a readable body",
+          "SSE_NO_BODY",
+        );
+      }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-
       let buffer = "";
 
+      // Read SSE stream
       while (true) {
         const { value, done } = await reader.read();
         if (done) {
@@ -72,28 +127,48 @@ export async function connectToJobEvents({ url, accessToken, onEvent, onOpen, on
         buffer += decoder.decode(value, {
           stream: true,
         });
-
         const events = buffer.split("\n\n");
+        // Keep the incomplete event for the next chunk.
         buffer = events.pop() ?? "";
-
         for (const rawEvent of events) {
           const event = parseSseEvent(rawEvent);
-          console.log("SSE event received", event);
-
           if (event) {
+            console.log(
+              "SSE event received",
+              event,
+            );
             onEvent(event);
           }
         }
       }
 
-      return;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        return;
+      // Flush any remaining decoder bytes.
+      buffer += decoder.decode();
+
+      // Process a final event if the server closed the connection without
+      // leaving the normal "\n\n" delimiter.
+      if (buffer.trim()) {
+        const event = parseSseEvent(buffer);
+        if (event) {
+          console.log(
+            "SSE event received",
+            event,
+          );
+          onEvent(event);
+        }
       }
 
+      // The stream closed normally.
+      return;
+    } catch (error) {
+      // AbortController cancellation is an expected shutdown condition.
+      if (
+        error instanceof DOMException &&
+        error.name === "AbortError"
+      ) {
+        return;
+      }
       onError?.(error);
-
       throw error;
     }
   }

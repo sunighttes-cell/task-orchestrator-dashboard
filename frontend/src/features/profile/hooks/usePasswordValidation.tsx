@@ -33,8 +33,6 @@ export function usePasswordValidation(
     };
 
     const valid = Object.values(rules)?.every(Boolean);
-    console.log("Object.values(rules)", Object.values(rules), Object.values(rules)?.filter(Boolean))
-
     const score =
       Object.values(rules)?.filter(Boolean)?.length;
 

@@ -48,8 +48,6 @@ const validation = usePasswordValidation("", newPassword, confirmPassword, usern
     };
 
     if (!validation?.valid) return;
-
-    //console.log("Register credentials:", registerUserRequest);
     mutation.mutate(registerUserRequest);
   };
   

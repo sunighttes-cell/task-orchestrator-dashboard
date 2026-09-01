@@ -25,7 +25,6 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
-
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
@@ -35,9 +34,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-
         String authHeader = request.getHeader("Authorization");
-
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -74,32 +71,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             authorities
                     );
 
-            SecurityContextHolder
-                    .getContext()
-                    .setAuthentication(authentication);
-
+            SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
 
         } catch (JwtException | IllegalArgumentException ex) {
             SecurityContextHolder.clearContext();
-
-            writeUnauthorized(
-                    response,
+            writeUnauthorized(response,
                     "Invalid token",
                     "INVALID_TOKEN"
             );
         }
     }
 
-    /**
-     * Authentication endpoints and static uploaded files do not require
-     * JWT authentication.
-     */
+    //Authentication endpoints and static uploaded files do not require JWT authentication.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-
         String path = request.getServletPath();
-
         return path.startsWith("/auth/")
                 || path.startsWith("/uploads/");
     }
@@ -109,7 +96,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String message,
             String code
     ) throws IOException {
-
         if (response.isCommitted()) {
             return;
         }
@@ -118,21 +104,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         response.setContentType(
                 "application/json"
         );
-
-        Map<String, Object> body =
-                new LinkedHashMap<>();
-
-        body.put(
-                "timestamp",
-                Instant.now().toString()
-        );
-
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
         body.put("message", message);
         body.put("code", code);
-
-        objectMapper.writeValue(
-                response.getWriter(),
-                body
-        );
+        objectMapper.writeValue(response.getWriter(), body);
     }
 }

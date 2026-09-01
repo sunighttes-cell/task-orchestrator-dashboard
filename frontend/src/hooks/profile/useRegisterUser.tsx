@@ -12,7 +12,6 @@ export function useRegisterUser() {
     mutationFn: registerUser,
     onSuccess: (data) => {
       // Store the token in sessionStorage or context
-      console.log("Registration successful, token:", data);
       register(data);
       navigate('/dashboard');
       toast.success("User registered successfully");

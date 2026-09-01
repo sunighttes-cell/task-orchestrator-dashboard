@@ -1,26 +1,30 @@
 import { useMutation } from "@tanstack/react-query";
-import { getLoginToken } from "@/api/jobsApi";
+import { loginUser } from "@/auth/api/AuthApi";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+
+type LoginCredentials = {
+  username: string;
+  password: string;
+};
 
 export function useAuthLogin() {
-    const { login } = useAuth();
-    const navigate = useNavigate();
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    return useMutation({
-    mutationFn: getLoginToken,
+  return useMutation({
+    mutationFn: ({ username, password }: LoginCredentials) =>
+      loginUser(username, password),
+
     onSuccess: (data) => {
-      // Store the token in sessionStorage or context
-      console.log("Login successful, token:", data);
       login(data);
-      navigate('/dashboard');
+      navigate("/dashboard");
       toast.success("Login successful");
     },
-    onError: (error) => {
-      console.log("Error: ", error);
-      toast.success("Login Failed, Please try again");
-    }
+
+    onError: () => {
+      toast.error("Login failed. Please check your username and password.");
+    },
   });
 }
- 

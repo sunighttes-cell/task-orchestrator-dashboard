@@ -18,16 +18,12 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const { data: profile, refetch } = useProfile();
-    console.log("Current profile in AvatarUpload:", profile);
     const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const avatarSrc = profile?.profilePictureUrl && !profile.profilePictureUrl.startsWith('http') ? `${baseUrl}${profile.profilePictureUrl}` : profile?.profilePictureUrl;
-    console.log("Avatar src in AvatarUpload:", avatarSrc);
-
     const uploading = () => setIsUploading(true);
     const doneUploading = () => setIsUploading(false);
 
     const uploadMutation = useUploadAvatar();
-
     useEffect(() => {
         return () => {
             if (previewUrl) {
@@ -44,32 +40,26 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
         event: React.ChangeEvent<HTMLInputElement>
     ) => {
         const file = event.target.files?.[0];
-
         if (!file) return;
-
         if (!file.type.startsWith("image/")) {
             alert("Please select an image.");
             return;
         }
-
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
         }
-
         setSelectedFile(file);
         setPreviewUrl(URL.createObjectURL(file));
     };
 
     const handleUpload = () => {
         if (!selectedFile) return;
-
         uploading();
         uploadMutation.mutate(selectedFile, {
-            onSuccess: (updatedProfile) => {
+            onSuccess: () => {
                 // Clear preview after successful upload
                 reset();
                 toast.success("Profile picture updated.");
-                console.log("Profile refetched successfully.", updatedProfile);
                 // Refetch to ensure profile data is fresh
                 refetch();
                 doneUploading();
@@ -86,10 +76,8 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
         if (previewUrl) {
             URL.revokeObjectURL(previewUrl);
         }
-
         setPreviewUrl(null);
         setSelectedFile(null);
-
         if (inputRef.current) {
             inputRef.current.value = "";
         }
@@ -108,16 +96,13 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleFileChange}
-            />
-
+                onChange={handleFileChange}/>
             <div className="flex gap-3">
                 <button
                     type="button"
                     className={PrimaryBtnClass}
                     onClick={handleBrowse}>Browse
                 </button>
-
                 <button
                     type="button"
                     className={PrimaryBtnClass}
@@ -131,7 +116,6 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
                         ? "Uploading..."
                         : "Save"}
                 </button>
-
                 {selectedFile && (
                     <button
                         type="button"
@@ -141,7 +125,6 @@ const AvatarUpload: React.FC<AvatarUploadProps> = () => {
                         <X size={16} />
                     </button>
                 )}
-
             </div>
             </div>
             )}

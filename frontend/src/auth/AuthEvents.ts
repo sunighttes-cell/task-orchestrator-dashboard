@@ -1,29 +1,39 @@
 type UnauthorizedListener = () => void;
 type AuthUpdateListener = (accessToken: string, refreshToken: string | null) => void;
 
-let unauthorizedListeners: UnauthorizedListener[] = [];
-let authUpdateListeners: AuthUpdateListener[] = [];
+const authUpdateListeners = new Set<AuthUpdateListener>();
+const unauthorizedListeners = new Set<UnauthorizedListener>();
 
-export function subscribeToUnauthorized(cb: UnauthorizedListener) {
-  unauthorizedListeners.push(cb);
+//Notify the application that authentication changed.
+export function emitAuthUpdate(accessToken: string | null, 
+  refreshToken: string | null): void {
+  authUpdateListeners.forEach((listener) => 
+    listener(accessToken, refreshToken));
+}
 
+//Subscribe to authentication changes.
+export function subscribeToAuthUpdate(listener: AuthUpdateListener): () => void {
+  authUpdateListeners.add(listener);
   return () => {
-    unauthorizedListeners = unauthorizedListeners.filter((l) => l !== cb);
+    authUpdateListeners.delete(listener);
   };
 }
 
-export function emitUnauthorized() {
-  unauthorizedListeners.forEach((cb) => cb());
+//Notify the application that authentication can no longer be maintained.
+export function emitUnauthorized(): void {
+  unauthorizedListeners.forEach(
+    (listener) => {
+       listener(); 
+    }
+  );
 }
 
-export function subscribeToAuthUpdate(cb: AuthUpdateListener) {
-  authUpdateListeners.push(cb);
-
+//Subscribe to unauthorized events.
+export function subscribeToUnauthorized(
+  listener: UnauthorizedListener
+): () => void {
+  unauthorizedListeners.add(listener);
   return () => {
-    authUpdateListeners = authUpdateListeners.filter((l) => l !== cb);
+    unauthorizedListeners.delete(listener);
   };
-}
-
-export function emitAuthUpdate(accessToken: string, refreshToken: string | null) {
-  authUpdateListeners.forEach((cb) => cb(accessToken, refreshToken));
 }

@@ -7,22 +7,6 @@ import type {
 import apiClient from "./client";
 import type { JobFilters } from "@/hooks/jobs/useJobs";
 
-// getLoginToken
-export async function getLoginToken(
-  loginData: Record<string, string>
-): Promise<{ accessToken: string, refreshToken: string }> {
-  const res = await apiClient.post("/auth/login", loginData);
-  return res.data;
-}
-
-//get refresh token
-export async function getRefreshToken(
-  refreshToken: string
-): Promise<{ accessToken: string, refreshToken: string }>  {
-  const res = await apiClient.post("/auth/refresh", { refreshToken });
-  return res.data;
-}
-
 // createJob
 export async function createJob(
   createJobRequest: CreateJobRequest

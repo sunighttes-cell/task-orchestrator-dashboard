@@ -44,23 +44,8 @@ export async function invalidateJobQueries(
   ]);
 
   console.log("========== SSE REFRESH COMPLETE ==========");
-
-  console.log(
-    "Jobs cache:",
-    queryClient.getQueriesData({
-      queryKey: ["jobs"],
-    })
-  );
-
-  console.log(
-    "Summary cache:",
-    queryClient.getQueryData(["status-summary"])
-  );
-
-  console.log(
-    "Metrics cache:",
-    queryClient.getQueryData(["dashboard-metrics"])
-  );
-
+  console.log("Jobs cache:", queryClient.getQueriesData({ queryKey: ["jobs"]}));
+  console.log("Summary cache:", queryClient.getQueryData(["status-summary"]));
+  console.log("Metrics cache:", queryClient.getQueryData(["dashboard-metrics"]));
   console.log("========== SSE REFRESH END ==========");
 }

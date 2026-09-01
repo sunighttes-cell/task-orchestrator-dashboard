@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useProfile } from "@/hooks/profile/useProfile";
+import { useAuth } from "@/auth/AuthContext";
 import { PageHeader } from "@/layout/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyData } from "@/components/EmptyData";
-import { PrimaryBtnClass } from "@/lib/constants";
+import { PrimaryBtnClass, SecondaryBtnClass } from "@/lib/constants";
 import UpdateProfileModal from "@/features/profile/components/UpdateProfileModal";
 import UpdatePasswordModal from "@/features/profile/components/UpdatePasswordModal";
 import AvatarUpload from "./components/AvatarUpload";
@@ -20,6 +21,12 @@ const ProfilePage: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const openPasswordModal = () => setIsPasswordModalOpen(true);
   const closePasswordModal = () => setIsPasswordModalOpen(false);
+
+  //log out all sessions
+  const { logoutAll } = useAuth();
+  const handleLogoutAll = async () => {
+    await logoutAll();
+  };
 
   return (
     <div className="p-6 rounded dark:bg-gray-900 space-y-4">
@@ -58,6 +65,11 @@ const ProfilePage: React.FC = () => {
                     type="button"
                     onClick={openUpdateModal}
                     className={PrimaryBtnClass}>Update Profile
+                </button>
+                <button 
+                    type="button"
+                    onClick={handleLogoutAll}
+                    className={SecondaryBtnClass}>Logout all sessions
                 </button>
               </div>
             {isUpdateModalOpen && 
