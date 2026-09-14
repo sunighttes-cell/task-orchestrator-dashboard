@@ -8,6 +8,7 @@ import com.taskOrchestrator.app.job.repository.ExecutionRepository;
 import com.taskOrchestrator.app.job.repository.JobRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
@@ -15,9 +16,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.taskOrchestrator.app.common.logging.LoggingConstants;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,14 +54,33 @@ public class JobProcessorService {
     public void processJob(Long jobId) {
         Job job = jobRepository.findById(jobId).orElseThrow();
         if (job.getStatus() != JobStatus.RUNNING) {
-            log.warn("Skipping job {} — current status is {}", jobId, job.getStatus());
+            log.warn("Skipping job because it is not RUNNING");
             return;
         }
 
         LocalDateTime startedAt = job.getStartedAt();
+
+        if (startedAt == null) {
+            startedAt = LocalDateTime.now();
+            job.setStartedAt(startedAt);
+        }
+
+        long executionStart = System.nanoTime();
+        Execution execution = Execution.builder()
+                .job(job)
+                .status(JobStatus.RUNNING)
+                .durationMs(0L)
+                .build();
+
+        execution = executionRepository.save(execution);
+        MDC.put(LoggingConstants.JOB_ID, String.valueOf(job.getId()));
+        MDC.put(LoggingConstants.EXECUTION_ID, String.valueOf(execution.getExecutionId()));
+        MDC.put(LoggingConstants.USER_ID, job.getUser().getId().toString());
+        MDC.put(LoggingConstants.STATUS, JobStatus.RUNNING.name());
+
         try {
-            log.info("Processing job id={}", jobId);
-            // Simulate work
+            log.info("Job execution started");
+            // Simulate asynchronous work.
             Thread.sleep(2000);
             boolean success = Math.random() > 0.3;
             if (success) {
@@ -66,52 +88,54 @@ public class JobProcessorService {
             } else {
                 failJob(job, "Random failure");
             }
+
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             failJob(job, "Job execution interrupted");
+            log.warn("Job execution interrupted", exception);
 
         } catch (Exception exception) {
-            log.error("Unexpected error processing job {}", jobId, exception);
             failJob(job, exception.getMessage());
+            log.error("Unexpected error processing job", exception);
+
+        } finally {
+            LocalDateTime completedAt = LocalDateTime.now();
+
+            long durationMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - executionStart);
+
+            job.setCompletedAt(completedAt);
+            Job savedJob = jobRepository.save(job);
+            execution.setStatus(savedJob.getStatus());
+            execution.setDurationMs(durationMs);
+            executionRepository.save(execution);
+
+            MDC.put(LoggingConstants.STATUS, savedJob.getStatus().name());
+            MDC.put(LoggingConstants.DURATION_MS, String.valueOf(durationMs));
+
+            if (savedJob.getStatus() == JobStatus.COMPLETED) {
+                log.info("Job execution completed successfully");
+            } else {
+                log.warn("Job execution completed with failure");
+            }
+
+            publishJobStatusChanged(savedJob);
+            MDC.remove(LoggingConstants.JOB_ID);
+            MDC.remove(LoggingConstants.EXECUTION_ID);
+            MDC.remove(LoggingConstants.USER_ID);
+            MDC.remove(LoggingConstants.DURATION_MS);
+            MDC.remove(LoggingConstants.STATUS);
         }
-
-        LocalDateTime completedAt = LocalDateTime.now();
-        job.setCompletedAt(completedAt);
-
-        Job savedJob = jobRepository.save(job);
-        recordExecution(savedJob, startedAt, completedAt);
-        publishJobStatusChanged(savedJob);
-
-        log.info("Finished job id={} status={}", savedJob.getId(), savedJob.getStatus());
     }
 
     /***---------------JOB STATUS TRANSITIONS--------------***/
     private void completeJob(Job job) {
         job.setStatus(JobStatus.COMPLETED);
         job.setFailureReason(null);
-        log.info("Job {} completed successfully", job.getId());
     }
 
     private void failJob(Job job, String failureReason) {
         job.setStatus(JobStatus.FAILED);
         job.setFailureReason(failureReason);
-        log.warn("Job {} failed: {}", job.getId(), failureReason);
-    }
-
-    /***---------------EXECUTION HISTORY--------------***/
-    private void recordExecution(
-            Job job,
-            LocalDateTime startedAt,
-            LocalDateTime completedAt
-    ) {
-        long durationMs = Duration.between(startedAt, completedAt).toMillis();
-        Execution execution =
-                Execution.builder()
-                        .job(job)
-                        .status(job.getStatus())
-                        .durationMs(durationMs)
-                        .build();
-        executionRepository.save(execution);
     }
 
     /***---------------STUCK JOB RECOVERY--------------***/
@@ -135,7 +159,12 @@ public class JobProcessorService {
         List<Job> savedJobs = jobRepository.saveAll(stuckJobs);
 
         for (Job job : savedJobs) {
-            log.warn("Recovered stuck job {} back to QUEUED", job.getId());
+            MDC.put(LoggingConstants.JOB_ID, String.valueOf(job.getId()));
+            MDC.put(LoggingConstants.STATUS, JobStatus.QUEUED.name());
+            log.warn("Recovered stuck job back to QUEUED");
+            MDC.remove(LoggingConstants.JOB_ID);
+            MDC.remove(LoggingConstants.STATUS);
+
             publishJobStatusChanged(job);
         }
 

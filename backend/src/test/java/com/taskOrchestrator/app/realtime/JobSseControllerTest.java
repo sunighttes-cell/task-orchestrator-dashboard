@@ -1,8 +1,9 @@
-package com.taskOrchestrator.app.realtime.controller;
+package com.taskOrchestrator.app.realtime;
 
 import com.taskOrchestrator.app.auth.application.CurrentUser;
 import com.taskOrchestrator.app.auth.application.CurrentUserProvider;
 import com.taskOrchestrator.app.auth.domain.User;
+import com.taskOrchestrator.app.realtime.controller.JobSseController;
 import com.taskOrchestrator.app.realtime.service.JobEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,7 +22,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class JobSseControllerTest {
-
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
@@ -33,7 +34,8 @@ class JobSseControllerTest {
         JobSseController controller = new JobSseController(jobEventPublisher, currentUserProvider);
 
         SseEmitter expected = new SseEmitter();
-        when(currentUserProvider.getCurrentUser()).thenReturn(new CurrentUser("alice", User.Role.USER));
+        when(currentUserProvider.getCurrentUser()).thenReturn(
+                new CurrentUser(UUID.randomUUID(), "alice", User.Role.USER));
         when(jobEventPublisher.subscribe("alice")).thenReturn(expected);
 
         SecurityContextHolder.getContext().setAuthentication(

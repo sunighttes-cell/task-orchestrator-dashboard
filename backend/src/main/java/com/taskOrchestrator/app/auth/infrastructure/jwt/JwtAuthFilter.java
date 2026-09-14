@@ -87,10 +87,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/auth/")
-                || path.startsWith("/uploads/");
+        return path.startsWith("/auth/") || path.startsWith("/uploads/");
     }
-
     private void writeUnauthorized(
             HttpServletResponse response,
             String message,
@@ -99,11 +97,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (response.isCommitted()) {
             return;
         }
-
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        response.setContentType(
-                "application/json"
-        );
+        response.setContentType("application/json");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now().toString());
         body.put("message", message);

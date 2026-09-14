@@ -103,6 +103,11 @@ public class SecurityConfig implements WebMvcConfigurer {
                                         "/uploads/**"
                                 )
                                 .permitAll()
+                                //Authenticated actuator health
+                                .requestMatchers(
+                                        "/actuator/health",
+                                        "/actuator/health/**"
+                                ).permitAll()
 
                                 // Authenticated SSE endpoint
                                 .requestMatchers(

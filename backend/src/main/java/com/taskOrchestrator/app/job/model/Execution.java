@@ -1,5 +1,6 @@
 //execution entity
 package com.taskOrchestrator.app.job.model;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -11,11 +12,10 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Execution {
-    //primary key
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long executionId;
-    private Long id;
+
     @ManyToOne
     @JoinColumn(name = "job_id")
     private Job job;

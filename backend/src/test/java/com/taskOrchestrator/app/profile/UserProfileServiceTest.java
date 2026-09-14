@@ -24,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,7 +57,7 @@ class UserProfileServiceTest {
 
     private User user;
     private CurrentUser currentUser =
-            new CurrentUser("testuser", User.Role.USER);
+            new CurrentUser(UUID.randomUUID(), "testuser", User.Role.USER);
 
     @BeforeEach
     void setUp() {
@@ -73,31 +74,20 @@ class UserProfileServiceTest {
 
     @Nested
     class GetUser {
-
         @Test
         void shouldReturnUserByUsername() {
-
-            given(userRepository.findByUsername("testuser"))
-                    .willReturn(Optional.of(user));
-
-            User result =
-                    userProfileService.getUser("testuser");
-
-            assertThat(result)
-                    .isSameAs(user);
-
-            verify(userRepository)
-                    .findByUsername("testuser");
+            given(userRepository.findByUsername("testuser")).willReturn(Optional.of(user));
+            User result = userProfileService.getUser("testuser");
+            assertThat(result).isSameAs(user);
+            verify(userRepository).findByUsername("testuser");
         }
 
         @Test
         void shouldThrowUnauthorizedWhenUserDoesNotExist() {
-
             given(userRepository.findByUsername("missing-user"))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() ->
-                    userProfileService.getUser("missing-user")
+            assertThatThrownBy(() -> userProfileService.getUser("missing-user")
             )
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(exception -> {
