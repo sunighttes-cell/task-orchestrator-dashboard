@@ -29,6 +29,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -70,7 +71,7 @@ class JobServiceTest {
                 .role(User.Role.USER)
                 .build();
 
-        currentUser = new CurrentUser("testuser", User.Role.USER);
+        currentUser = new CurrentUser(UUID.randomUUID(),"testuser", User.Role.USER);
         job = Job.builder()
                 .id(JOB_ID)
                 .name("Test Job")
@@ -375,8 +376,7 @@ class JobServiceTest {
 
             verify(jobRepository)
                     .save(job);
-            verify(jobEventPublisher)
-                    .publish(any());
+            verify(jobEventPublisher).publish(any());
 
             assertThat(response)
                     .isNotNull();

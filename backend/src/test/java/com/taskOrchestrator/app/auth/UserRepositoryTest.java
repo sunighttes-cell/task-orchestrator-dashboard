@@ -37,11 +37,8 @@ class UserRepositoryTest {
     @Test
     @DisplayName("Should find user by username")
     void shouldFindUserByUsername() {
-
         User user = userRepository.save(TestUserFactory.user());
-
-        Optional<User> result =
-                userRepository.findByUsername(user.getUsername());
+        Optional<User> result = userRepository.findByUsername(user.getUsername());
 
         assertTrue(result.isPresent());
         assertEquals(user.getUsername(), result.get().getUsername());
@@ -50,11 +47,8 @@ class UserRepositoryTest {
     @Test
     @DisplayName("Should find user by email")
     void shouldFindUserByEmail() {
-
         User user = userRepository.save(TestUserFactory.user());
-
-        Optional<User> result =
-                userRepository.findByEmail(user.getEmail());
+        Optional<User> result = userRepository.findByEmail(user.getEmail());
 
         assertTrue(result.isPresent());
         assertEquals(user.getEmail(), result.get().getEmail());
@@ -63,76 +57,50 @@ class UserRepositoryTest {
     @Test
     @DisplayName("Should return empty when username does not exist")
     void shouldReturnEmptyWhenUsernameDoesNotExist() {
-
-        Optional<User> result =
-                userRepository.findByUsername("unknown");
-
+        Optional<User> result = userRepository.findByUsername("unknown");
         assertTrue(result.isEmpty());
     }
 
     @Test
     @DisplayName("Should return empty when email does not exist")
     void shouldReturnEmptyWhenEmailDoesNotExist() {
-
-        Optional<User> result =
-                userRepository.findByEmail("unknown@test.com");
-
+        Optional<User> result = userRepository.findByEmail("unknown@test.com");
         assertTrue(result.isEmpty());
     }
 
     @Test
     @DisplayName("Should return true when username exists")
     void shouldReturnTrueWhenUsernameExists() {
-
         User user = userRepository.save(TestUserFactory.user());
-
-        assertTrue(
-                userRepository.existsByUsername(user.getUsername())
-        );
+        assertTrue(userRepository.existsByUsername(user.getUsername()));
     }
 
     @Test
     @DisplayName("Should return false when username does not exist")
     void shouldReturnFalseWhenUsernameDoesNotExist() {
-
-        assertFalse(
-                userRepository.existsByUsername("does-not-exist")
-        );
+        assertFalse(userRepository.existsByUsername("does-not-exist"));
     }
 
     @Test
     @DisplayName("Should return true when email exists")
     void shouldReturnTrueWhenEmailExists() {
-
         User user = userRepository.save(TestUserFactory.user());
-
-        assertTrue(
-                userRepository.existsByEmail(user.getEmail())
-        );
+        assertTrue(userRepository.existsByEmail(user.getEmail()));
     }
 
     @Test
     @DisplayName("Should return false when email does not exist")
     void shouldReturnFalseWhenEmailDoesNotExist() {
-
-        assertFalse(
-                userRepository.existsByEmail("unknown@test.com")
-        );
+        assertFalse(userRepository.existsByEmail("unknown@test.com"));
     }
 
     @Test
     @DisplayName("Should not allow duplicate usernames")
     void shouldNotAllowDuplicateUsername() {
-
         userRepository.save(TestUserFactory.user());
-
-        User duplicate =
-                TestUserFactory.secondUser();
-
+        User duplicate = TestUserFactory.secondUser();
         duplicate.setUsername("testuser");
-
-        assertThrows(
-                DataIntegrityViolationException.class,
+        assertThrows(DataIntegrityViolationException.class,
                 () -> {
                     userRepository.saveAndFlush(duplicate);
                 }
@@ -142,14 +110,9 @@ class UserRepositoryTest {
     @Test
     @DisplayName("Should not allow duplicate emails")
     void shouldNotAllowDuplicateEmail() {
-
         userRepository.save(TestUserFactory.user());
-
-        User duplicate =
-                TestUserFactory.secondUser();
-
+        User duplicate = TestUserFactory.secondUser();
         duplicate.setEmail("testuser@example.com");
-
         assertThrows(
                 DataIntegrityViolationException.class,
                 () -> {

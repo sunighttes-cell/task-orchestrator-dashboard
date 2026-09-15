@@ -42,11 +42,6 @@ public class JobService {
         this.jobEventPublisher = jobEventPublisher;
     }
 
-//    public List<Job> getJobsByUsername() {
-//        String username = currentUserProvider.getCurrentUser().username();
-//        return jobRepository.findByUserUsername(username);
-//    }
-
     private Specification<Job> baseSpec() {
         String username = currentUserProvider.getCurrentUser().username();
         Specification<Job> spec = Specification.unrestricted();
@@ -56,12 +51,9 @@ public class JobService {
     }
 
     public JobResponse createJob(CreateJobRequest request) {
-        System.out.println("Current currentUserProvider: " + currentUserProvider);
         String username = currentUserProvider.getCurrentUser().username();
-        System.out.println("Current user: " + username);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        System.out.println("User found: " + user.getId());
         Job job = Job.builder()
                 .name(request.name())
                 .status(JobStatus.QUEUED)
@@ -113,11 +105,8 @@ public class JobService {
     }
 
     public JobResponse retryJob(Long jobId) {
-        Specification<Job> spec = baseSpec()
-                .and(JobSpecification.hasId(jobId));
-
-        Job job = jobRepository.findOne(spec)
-                .orElseThrow(() -> new JobNotFoundException(jobId));
+        Specification<Job> spec = baseSpec().and(JobSpecification.hasId(jobId));
+        Job job = jobRepository.findOne(spec).orElseThrow(() -> new JobNotFoundException(jobId));
 
         if (job.getStatus() != JobStatus.FAILED) {
             throw new IllegalStateException("Job must be in FAILED status to retry");
@@ -142,11 +131,8 @@ public class JobService {
 
     @Transactional
     public void deleteJob(Long id, Pageable pageable) {
-        Specification<Job> spec = baseSpec()
-                .and(JobSpecification.hasId(id));
-
-        Job job = jobRepository.findOne(spec)
-                .orElseThrow(() -> new JobNotFoundException(id));
+        Specification<Job> spec = baseSpec().and(JobSpecification.hasId(id));
+        Job job = jobRepository.findOne(spec).orElseThrow(() -> new JobNotFoundException(id));
 
         if (job.getStatus() == JobStatus.RUNNING) {
             throw new IllegalStateException("Cannot delete a running job");
