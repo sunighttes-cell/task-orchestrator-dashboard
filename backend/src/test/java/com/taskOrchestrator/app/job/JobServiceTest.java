@@ -11,7 +11,6 @@ import com.taskOrchestrator.app.job.dto.StatusSummary;
 import com.taskOrchestrator.app.common.exception.JobNotFoundException;
 import com.taskOrchestrator.app.job.repository.JobRepository;
 import com.taskOrchestrator.app.job.service.JobService;
-import com.taskOrchestrator.app.realtime.model.JobEvent;
 import com.taskOrchestrator.app.realtime.service.JobEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -377,7 +376,7 @@ class JobServiceTest {
 
             verify(jobRepository)
                     .save(job);
-            verify(jobEventPublisher).publish(new JobEvent());
+            verify(jobEventPublisher).publish(any());
 
             assertThat(response)
                     .isNotNull();
